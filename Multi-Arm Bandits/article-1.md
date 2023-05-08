@@ -52,6 +52,7 @@ I learned about these algorithms from the Udemy course [Bayesian Machine Learnin
 Algorithms in the `greedy` family applies a simple logic: choose the version that gives the best *historical* expected payoff. For simplicity, let's consider an e-commerce website that has 5 different designs but sells a single product: an EveryDay-Carry (EDC) musical instrument for 69.99 dollars. In such an experiment, only 2 outcomes are possible from each visitor: buy or not buy.
 
 While not necessary, we can try out all 5 algorithms in the beginning. For example, for the first 50 visitors, we will send 10 to each design. From that point on, the algorithm finds the version that gives the best expected payoff, and play that version. Here is the pseudocode:
+
 ```
 for i in [1, 50]:
     choose each bandit 10 times
