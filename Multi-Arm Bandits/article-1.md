@@ -53,14 +53,14 @@ Algorithms in the `greedy` family applies a simple logic: choose the version tha
 
 While not necessary, we can try out all 5 algorithms in the beginning. For example, for the first 50 visitors, we will send 10 to each design. From that point on, the algorithm finds the version that gives the best expected payoff, and play that version. Here is the pseudocode:
 
-```
+````
 for i in [1, 50]:
     choose each bandit 10 times
 while True:
     j = argmax(expected bandit payoffs)
     x = pay from playing bandit j
     bandit[j].update_mean(x)
-```
+````
 
 I have used **bandit** instead of version because the problem we are working on is known as the ``Multi-Armed Bandits`` problem in probability theory and machine learning. The analogy stems from choosing from multiple slot machines in a casino since a slot machine is referred to as a "one-armed bandit".
 
