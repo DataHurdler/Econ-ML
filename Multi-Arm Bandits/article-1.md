@@ -57,15 +57,15 @@ While not necessary, we can try out all 5 algorithms in the beginning. For examp
 for i in [1, 50]:
     choose each bandit randomly
 while True:
-    j = argmax(expected bandit payoffs)
-    x = pay from playing bandit j
+    j = argmax(expected bandit win rates)
+    x = T/F from playing bandit j
     bandit[j].update_mean(x)
 ```
 
 I have used **bandit** instead of version because the problem we are working on is known as the ``Multi-Armed Bandits`` problem in probability theory and machine learning. The analogy stems from choosing from multiple slot machines in a casino since a slot machine is referred to as a "one-armed bandit".
 
-Let's take a closer look at the pseudocode. In the pseudocode, $i$ indexes visitor, $j$ indexes the website version (or bandit), and $x$ is either 69.99, when the visitor buys, or 0. Furthermore, `update_mean()` is a function that takes the new value of `x` and update the expected payoff for bandit `j`. To update the expected payoff after bandit `j` was played for the $n_{th}$ time, we have
-$$\bar{x}_n=\frac{\bar{x}_{n-1}*\times*(n-1)+x_n}{n}$$
+Let's take a closer look at the pseudocode. In the pseudocode, $i$ indexes visitor, $j$ indexes the website version (or bandit), and $x$ is either 1, when the visitor buys, or 0. Furthermore, `update_mean()` is a function that takes the new value of `x` and update the expected payoff for bandit `j`. To update the expected payoff after bandit `j` was played for the $n_{th}$ time, we have
+$$\bar{x}_n=\frac{\bar{x}_{n-1}\times(n-1)+x_n}{n}$$
 
 This calculates the mean at constant time, i.e., it requires only 3 values to calculate the mean regardless of the value of $n$: $\bar{x}_{n-1}$, $x_n$, and $n$, whereas the number of values required to calculate the mean with the formula
 $$\bar{x}_n=\frac{\sum_{i=1}^n{x_i}}{n}$$
@@ -80,8 +80,8 @@ while True:
     if p < epsilon:
         j = choose a bandit at random
     else:
-        j = argmax(expected bandit payoffs)
-    x = pay from playing bandit j
+        j = argmax(expected bandit win rates)
+    x = T/F from playing bandit j
     bandit[j].update_mean(x)
 ```
 
@@ -331,6 +331,63 @@ Here is the output from the above run:
 ![Epsilon Greedy](eg.png)
 
 ## Optimistic Initial Values
+
+While `Epsilon Greedy` focused on "exploit" and can end up choosing the second-best version, `Optimistic Initial Value` focuses on "explore". The name of this algorithm informs you what it does: at the start of the experiment, each version is set to have a high expected payoff. This ensures that each bandit to be played a fair number of times. As a result, there is no need to set aside 50 visitors to "test the water" in the beginning. If `Epsilon Greedy` is like English auction where the values go up over time, then `Optimistic Initial Value` is like Dutch auction where the values go *down* over time. Here is the pseudocode:
+```
+p_init = 5 # a large value as initial win rate for ALL bandits
+
+while True:
+    j = argmax(expected bandit win rates)
+    x = T/F from playing bandit j
+    bandit[j].update_mane(x)
+```
+
+Assuming you already have the code from `epsilon greedy`, simply add the following inside the `BayesianAB` class will add `Optimistic Initial Value` to the script:
+```python
+  ####################
+  # optimistic initial values
+  def optim_init_val(
+      self,
+      init_val: float,
+  ) -> list:
+
+    self.prob_win = [init_val] * len(self.prob_win)
+    self.history.append(self.prob_win.copy())
+
+    for k in range(1, N):
+      # find index of the largest value in prob_win
+      i = np.argmax(self.prob_win)
+
+      self.update(i, k)
+
+    return self.history
+```
+
+The only thing new here is the line that assigns `init_val` to `prob_win` in the beginning of the method. We can then execute the following to get results and visualization:
+```python
+oiv = BayesianAB(N_bandits)
+print(f'The true win rates: {oiv.prob_true}')
+oiv_history = oiv.optim_init_val(init_val=0.99)
+print(f'The observed win rates: {oiv.prob_win}')
+print(f'Number of times each bandit was played: {oiv.count}')
+
+# plot the entire experiment history
+plot_history(history=oiv.history, prob_true=oiv.prob_true)
+```
+
+And following are outcomes from a typical run:
+```
+The true win rates: [0.3, 0.58, 0.14, 0.27, 0.75]
+The observed win rates: [0.4950, 0.5865, 0.5862, 0.5950, 0.7517]
+Number of times each bandit was played: [1, 6, 4, 4, 99984]
+```
+
+![Optimistic Initial Values](oiv.png)
+
+Note that I set `init_val` to 0.99 since we are comparing win rates that cant not exceed 1. Interestingly, while `initial optimistic values` were designed to explore in the beginning, it converged and started to exploit much quicker and much more frequent compared to `epsilon greedy` where the rate of exploration is dictated by the value of `epsilon`. Also note that, like `epsilon greedy`, the empirical probabilities do not converge to the true probabilities except for the "chosen" one.
+
+What are the problems of initial optimistic values? I haven't noticed any...
+
 
 
 ## References (Incomplete)
