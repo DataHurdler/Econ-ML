@@ -14,15 +14,11 @@ I did. Suppose you own and built an e-commerce website with two different color 
 * $s_i$: standard deviation of dollars spent by visitors of version $i$.
 
 We can now calculate the "power" as
-$$
-    t=\frac{\bar{x}_A-\bar{x}_B}{s_p\sqrt{\tfrac{1}{n_A}+\tfrac{1}{n_B}}}
-$$
+$$t=\frac{\bar{x}_A-\bar{x}_B}{s_p\sqrt{\tfrac{1}{n_A}+\tfrac{1}{n_B}}}$$
 where $s_p=\sqrt{\frac{(n_A-1)s_A^2+(n_B-1)s_B^2}{n_A+n_B-2}}$ is the pooled standard deviation. The "power" $t$ follows a $t$-distribution with $n_A+n_B-2$ degrees of freedom.
 
 Suppose you know that $s_A=s_B$ for the two versions in your A/B test, which we will denote as $s$. Also suppose, for simplicity, you want $n_A=n_B$. You can solve for $n$ and from the above power analysis formula and obtain:
-$$
-    N=\frac{4t^2s^2}{(\bar{x}_A-\bar{x}_B)^2}
-$$
+$$N=\frac{4t^2s^2}{(\bar{x}_A-\bar{x}_B)^2}$$
 where $N$ is the total sample size ($n_A+n_B$). It is easy to see that you will need a larger sample size if
 * the expected difference between the two versions are smaller.
 * you want a better significance level, e.g., 1% instead of 5%;
