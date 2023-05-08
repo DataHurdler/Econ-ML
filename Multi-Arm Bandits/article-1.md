@@ -47,7 +47,122 @@ We will begin our in-depth discuss of algorithms with `Epsilon Greedy`. For each
 * pseudocode
 * `Python` code
 
-I learned about these algorithms from the Udemy course [Bayesian Machine Learning in Python: A/B Testing](https://www.udemy.com/course/bayesian-machine-learning-in-python-ab-testing/). Although `Python` scripts were provided in the course, the scripts that I will show you are the ones I have built on my own, although I did update some of them based on those provided in the course to make it more efficient or general.
+I learned about these algorithms from the Udemy course [Bayesian Machine Learning in Python: A/B Testing](https://www.udemy.com/course/bayesian-machine-learning-in-python-ab-testing/). Although `Python` scripts were provided in the course, the ones that I will show in this article were first built on my own, then updated based on ones provided in the course to make them more efficient or practical.
+
+Algorithms in the `greedy` family applies a simple logic: choose the version that gives the best *historical* expected payoff. For simplicity, let's consider an e-commerce website that has 5 different designs but sells a single product: an EveryDay-Carry (EDC) musical instrument for 69.99 dollars. In such an experiment, only 2 outcomes are possible from each visitor: buy or not buy.
+
+While not necessary, we can try out all 5 algorithms in the beginning. For example, for the first 50 visitors, we will send 10 to each design. From that point on, the algorithm finds the version that gives the best expected payoff, and play that version. Here is the pseudocode:
+```
+for i in [1, 50]:
+    choose each bandit 10 times
+while True:
+    j = argmax(expected bandit payoffs)
+    x = pay from playing bandit j
+    bandit[j].update_mean(x)
+```
+
+I have used **bandit** instead of version because the problem we are working on is known as the ``Multi-Armed Bandits`` problem in probability theory and machine learning. The analogy stems from choosing from multiple slot machines in a casino since a slot machine is referred to as a "one-armed bandit".
+
+Let's take a closer look at the pseudocode. In the pseudocode, $i$ indexes visitor, $j$ indexes the website version (or bandit), and $x$ is either 69.99, when the visitor buys, or 0. Furthermore, `update_mean()` is a function that takes the new value of `x` and update the expected payoff for bandit `j`. To update the expected payoff after bandit `j` was played for the $n^{th}$ time, we have
+$$\bar{x}_{n}=\frac{\bar{x}_{n-1}\times(n-1)+x_n}{n}$$
+This calculates the mean at constant time, i.e., it requires only 3 values to calculate the mean regardless of the value of $n$: $\bar{x}_{n-1}$, $x_n$, and $n$ whereas the number of values required to calculate the mean with the formula
+$$\bar{x}_{n}=\frac{\sum_{i=1}^{n}{x_i}}{n}$$
+increases with $n$.
+
+It should be obvious that the above `greedy` algorithm has an obvious problem: once it finds a bandit with high enough payoff, it rarely switches. In other words, it almost never explores. `Epsilon Greedy` provides simple fix:
+```
+for i in [1, 50]:
+    choose each bandit 10 times
+while True:
+    p = random number in [0, 1]
+    if p < epsilon:
+        j = choose a bandit at random
+    else:
+        j = argmax(expected bandit payoffs)
+    x = pay from playing bandit j
+    bandit[j].update_mean(x)
+```
+
+As the pseudocode indicates, a random value is drawn when a new visitor has arrived. If the random value is smaller than the threshold `epsilon`, set before the start of the experiment, then a random bandit is picked. Note that this randomly picked bandit can be the same as the one otherwise picked by `argmax`. To exclude such case only requires a few more lines of code. However, there is no obvious reason to do so.
+
+Let's now move onto the actual implementation in `Python`. Note that there are lines with comment "*only in demonstration*." These lines are for generating *true* probabilities of different bandits, which you obvious do not know when running a real-world experiment.
+
+```python
+import numpy as np
+import pandas as pd
+import random
+import matplotlib.pyplot as plt
+import seaborn as sns
+from scipy.stats import beta
+
+# set the number of bandits
+N_bandits = 5
+# set the number of trials
+N = 100000
+
+class BayesianAB:
+  def __init__(
+      self,
+      number_of_bandits: int = 2,
+  ):
+    self.prob_true= [0] * number_of_bandits # only in demonstration
+    self.prob_win = [0] * number_of_bandits
+    self.history = []
+    self.count = [0] * number_of_bandits # only in demonstration
+
+    # set the last bandit to have a win rate of 0.75 and the rest lower
+    # only in demonstration
+    self.prob_true[-1] = 0.75
+    for i in range(0, number_of_bandits-1):
+      self.prob_true[i] = round(0.75 - random.uniform(0.05, 0.65), 2)
+
+
+  # Receives a random value of 0 or 1
+  # only in demonstration
+  def pull(
+      self,
+      i,
+  ) -> bool:
+    return random.random() < self.prob_true[i]
+
+  # Updates the mean
+  def update(
+      self,
+      i,
+      k,
+  ):
+    outcome = self.pull(i)
+    # may use a constant discount rate to discount past
+    self.prob_win[i] = (self.prob_win[i] * k + outcome) / (k+1)
+    self.history.append(self.prob_win.copy())
+    self.count[i] += 1
+
+  ####################
+  # epsilon greedy
+  def epsilon_greedy(
+      self,
+      epsilon: float, # decay epsilon?
+  ) -> list:
+
+    self.history.append(self.prob_win.copy())
+
+    for k in range(1, N):
+      # find index of the largest value in prob_win
+      i = np.argmax(self.prob_win)
+
+      if random.random() < epsilon:
+        j = random.randrange(0, len(self.prob_win))
+        # If the randomly picked bandit is the same as one from argmax
+        # then pick another one
+        while j == i:
+          j = random.randrange(0, len(self.prob_win))
+        else:
+          i = j
+
+      self.update(i, k)
+
+    return self.history
+```
 
 ## References (Incomplete)
 
