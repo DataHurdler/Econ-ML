@@ -298,6 +298,10 @@ Also note that the empirical probabilities are not guaranteed to converge to the
 
 We can also visualize the outcome with the following code:
 ```python
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
 def plot_history(
     history: list,
     prob_true: list,
