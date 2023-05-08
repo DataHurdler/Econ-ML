@@ -56,7 +56,7 @@ While not necessary, we can try out all 5 algorithms in the beginning. For examp
 ```
 for i in [1, 50]:
     choose each bandit randomly
-while True:
+loop:
     j = argmax(expected bandit win rates)
     x = T/F from playing bandit j
     bandit[j].update_mean(x)
@@ -75,7 +75,7 @@ It should be obvious that the above `greedy` algorithm has an obvious problem: o
 ```
 for i in [1, 50]:
     choose each bandit randomly
-while True:
+loop:
     p = random number in [0, 1]
     if p < epsilon:
         j = choose a bandit at random
@@ -336,7 +336,7 @@ While `Epsilon Greedy` focused on "exploit" and can end up choosing the second-b
 ```
 p_init = 5 # a large value as initial win rate for ALL bandits
 
-while True:
+loop:
     j = argmax(expected bandit win rates)
     x = T/F from playing bandit j
     bandit[j].update_mane(x)
@@ -386,8 +386,104 @@ Number of times each bandit was played: [1, 6, 4, 4, 99984]
 
 Note that I set `init_val` to 0.99 since we are comparing win rates that cant not exceed 1. Interestingly, while `initial optimistic values` were designed to explore in the beginning, it converged and started to exploit much quicker and much more frequent compared to `epsilon greedy` where the rate of exploration is dictated by the value of `epsilon`. Also note that, like `epsilon greedy`, the empirical probabilities do not converge to the true probabilities except for the "chosen" one.
 
-What are the problems of initial optimistic values? I haven't noticed any...
+What are the problems of initial optimistic values? I not aware of any...
 
+## Upper Confidence Bound (UCB)
+
+The intuition of of UCB is harder to grasp although its implementation is straightforward. To begin, let's look back to the last two algorithms we have covered, `epsilon greedy` and `optimistic initial values`. A common step in the implementation of both of these algorithms is to find the version that gives the best *historical* expected win rate. But can we do better, especially we know these expected win rates are probabilistic. Put differently, we know that the more a certain version was chosen, the more accurate the its expected win rate is close to the true win rate. But what about those that was barely chosen?
+
+That is where `upper confidence bound` comes into play. The idea is that we should not be relying on the historical expected value only. We should give each version some "bonus points": if a version has been chosen a lot, the bonus should be small, and if a version has been barely chosen, it should get a large bonus because, probabilistically, the historical expected value *can* be far from the true value if it has been chosen much.
+
+If you are interested in the math, you can read the paper "[Finite-time Analysis of the Multiarmed Bandit Problem](https://homes.di.unimi.it/~cesabian/Pubblicazioni/ml-02.pdf)". In the paper the authors have outlined a function for the "bonus", which is commonly known as `UBC1`:
+$$b=\sqrt{\frac{2\log{N}}{n_j}}$$
+where $N$ is the total number of visitors at the time of computing the bonus, and $n_j$ is the number of times that bandit $j$ was chosen at the time of computing the bonus. Adding $b$ to the expected win rate gives the upper confidence bound:
+$$\text{UCB1}=\bar{x}_{n_j}+b$$
+
+Here is the pseudocode for `UCB1`:
+```
+loop:
+    j = argmax(UCB1 values)
+    x = T/F from playing bandit j
+    bandit[j].update_mean(x)
+```
+
+Adding the following method into `BayesianAB` will implement `UCB1`:
+```python
+  ####################
+  # upper confidence bound (UCB1)
+  def ucb1(
+      self,
+  ) -> list:
+
+    self.history.append(self.prob_win.copy())
+    bandit_count = [0.0001] * len(self.prob_win)
+    # bound = [0] * len(self.prob_win)
+
+    for k in range(1, N):
+      bound = self.prob_win + np.sqrt(2 * np.log(k) / bandit_count)
+      # find index of the largest value in bound
+      i = np.argmax(bound)
+
+      self.update(i, k)
+      bandit_count[i] += 1
+
+    return self.history
+```
+
+This is very similar to what we had before. One thing to note is that I give a very small initial value ($0.0001$) to `bandit_count` to avoid the division of zero. An alternative approach is that similar to `epsilon greedy`: run the first 50 iterations on all versions than implement `UCB1` from the 51st onward.
+
+Executing the following will give us results and visualizations:
+```python
+ucb = BayesianAB(N_bandits)
+print(f'The true win rates: {ucb.prob_true}')
+ucb_history = ucb.ucb1()
+print(f'The observed win rates: {ucb.prob_win}')
+print(f'Number of times each bandit was played: {ucb.count}')
+
+# plot the entire experiment history
+plot_history(history=ucb.history, prob_true=ucb.prob_true)
+```
+
+A typical run gives the following:
+```
+The true win rates: [0.68, 0.42, 0.62, 0.63, 0.75]
+The observed win rates: [0.4299, 0.4039, 0.5200, 0.4130, 0.7492]
+Number of times each bandit was played: [206, 178, 386, 187, 99042]
+```
+
+![UCB1](ucb1.png)
+
+Unlike `epsilon greedy`, `UCB1` has not problem identifying the best version even though several others are quite close in their true win rates.
+
+## Thompson Sampling (Bayesian Bandits)
+
+`Thompson Sampling`, or what is sometimes known as `Bayesian Bandits`, takes another (big) step forward from UCB. In our discussion on UCB, we acknowledged the fact that using a single expected value to represent the performance of a version is not accurate. To tackle this, UCB1 adds a "bonus": the bonus is smaller for the bandits that were played more, and larger for the bandits that were played less.
+
+To push this further, and as the name `Thompson Sampling` is hinted, we may ask if we could construct a probability distribution to describe the expected values of a version. As it turns out, this is possible, as everything, including parameters, are random variables in Bayesian Statistics. For example, when we think about Normal Distribution, we often speak of fixed values of mean and variance. But in Bayesian Statistics, the mean and variance of a Normal Distribution are two random variables and they can be described as probability distributions.
+
+The mathematical derivation of `Thompson Sampling` requires the use of [conjugate prior](https://en.wikipedia.org/wiki/Conjugate_prior), which I will discuss here briefly.
+
+### Conjugate Prior
+Recall the Bayes Rule:
+$$p(\theta \mid X)=\frac{p(X \mid \theta)p(\theta)}{p(X)}$$
+where the four parts are called, respectively
+* $p(\theta \mid X)$: Posterior distribution
+* $p(X \mid \theta)$: Likelihood function
+* $p(\theta)$: Prior probability distribution
+* $p(X)$: Evidence
+
+In Bayesian Statistics, if the posterior distribution is in the same probability distribution family as the prior probability distribution, the prior and posterior are then called conjugate distributions, and the prior is called a **conjugate prior** for the likelihood function.
+
+With conjugate priors, the updating in a Bayesian approach reduces to the updates of hyperparameters that are used to describe both the prior and posterior distribution, since they are the same. I will leave the details to a Statistics textbook, but for our purpose, since our example concerns of binary outcomes (buy or not buy), our likelihood function is that of Bernoulli. As it turns out, the conjugate prior for a Bernoulli likelihood function is the Beta distribution, which has two hyperparameters, denoted as $a$ and $b$.
+
+Now that we have established that Beta distribution is the conjugate prior for Bernoulli, the problem is `Thompson Sampling` is reduced to
+
+1. sample from the Beta distribution
+2. find the highest expected value
+
+## Thompson Sampling: Code
+
+Here is the pseudocode for `Thompson Sampling`:
 
 
 ## References (Incomplete)
