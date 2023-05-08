@@ -65,7 +65,7 @@ while True:
 I have used **bandit** instead of version because the problem we are working on is known as the ``Multi-Armed Bandits`` problem in probability theory and machine learning. The analogy stems from choosing from multiple slot machines in a casino since a slot machine is referred to as a "one-armed bandit".
 
 Let's take a closer look at the pseudocode. In the pseudocode, $i$ indexes visitor, $j$ indexes the website version (or bandit), and $x$ is either 69.99, when the visitor buys, or 0. Furthermore, `update_mean()` is a function that takes the new value of `x` and update the expected payoff for bandit `j`. To update the expected payoff after bandit `j` was played for the $n_{th}$ time, we have
-$$\bar{x}_n=\frac{\bar{x}_{n-1}*\times*(n-1)+x_n}{n}$$
+$$\bar{x}_ n=\frac{\bar{x}_{n-1}*\times*(n-1)+x_ n}{n}$$
 
 This calculates the mean at constant time, i.e., it requires only 3 values to calculate the mean regardless of the value of $n$: $\bar{x}_{n-1}$, $x_n$, and $n$, whereas the number of values required to calculate the mean with the formula
 $$\bar{x}_n=\frac{\sum_{i=1}^n{x_i}}{n}$$
@@ -286,7 +286,7 @@ print(f'The observed win rates: {eg.prob_win}')
 print(f'Number of times each bandit was played: {eg.count}')
 ```
 Here, we call `epsilon_greedy` and give a value of 0.5 as `epsilon`. We also print out the true probabilities, the empirical probabilities, and the number of times each bandit was played. Here is the output from a typical run:
-```markdown
+```
 The true win rates: [0.23, 0.51, 0.64, 0.54, 0.75]
 The observed win rates: [0.1733, 0.4404, 0.6276, 0.4164, 0.5469]
 Number of times each bandit was played: [12341, 12500, 49985, 12732, 12442]
