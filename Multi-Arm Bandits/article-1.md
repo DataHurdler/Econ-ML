@@ -47,15 +47,15 @@ We will begin our in-depth discuss of algorithms with `Epsilon Greedy`. For each
 * pseudocode
 * `Python` code
 
-I learned about these algorithms from the Udemy course [Bayesian Machine Learning in Python: A/B Testing](https://www.udemy.com/course/bayesian-machine-learning-in-python-ab-testing/). Although `Python` scripts were provided in the course, the ones that I will show in this article were first built on my own, then updated based on ones provided in the course to make them more efficient or practical.
+I learned about these algorithms from the Udemy course [Bayesian Machine Learning in Python: A/B Testing](https://www.udemy.com/course/bayesian-machine-learning-in-python-ab-testing/). Although `Python` scripts were provided in the course, the ones that I will show in this article were first built on my own, then updated based on those provided in the course for better efficiency and practicality.
 
-Algorithms in the `greedy` family applies a simple logic: choose the version that gives the best *historical* expected payoff. For simplicity, let's consider an e-commerce website that has 5 different designs but sells a single product: an EveryDay-Carry (EDC) musical instrument for 69.99 dollars. In such an experiment, only 2 outcomes are possible from each visitor: buy or not buy.
+Algorithms in the `greedy` family applies a simple logic: choose the version that gives the best *historical* expected payoff. For simplicity, let's consider an e-commerce website that has 5 different designs but sells a single product: an EveryDay-Carry (EDC) musical instrument for 69.99 dollars. If we run an A/B/N test on the designs, only 2 outcomes are possible from each visitor: buy or not buy.
 
-While not necessary, we can try out all 5 algorithms in the beginning. For example, for the first 50 visitors, we will send 10 to each design. From that point on, the algorithm finds the version that gives the best expected payoff, and play that version. Here is the pseudocode:
+While not necessary, we can try out all 5 algorithms in the beginning. For example, for the first 50 visitors, we send them to each design with equal probability. From that point on, the algorithm finds the version that gives the best expected payoff, and play that version. Here is the pseudocode:
 
 ```
 for i in [1, 50]:
-    choose each bandit 10 times
+    choose each bandit randomly
 while True:
     j = argmax(expected bandit payoffs)
     x = pay from playing bandit j
@@ -65,7 +65,7 @@ while True:
 I have used **bandit** instead of version because the problem we are working on is known as the ``Multi-Armed Bandits`` problem in probability theory and machine learning. The analogy stems from choosing from multiple slot machines in a casino since a slot machine is referred to as a "one-armed bandit".
 
 Let's take a closer look at the pseudocode. In the pseudocode, $i$ indexes visitor, $j$ indexes the website version (or bandit), and $x$ is either 69.99, when the visitor buys, or 0. Furthermore, `update_mean()` is a function that takes the new value of `x` and update the expected payoff for bandit `j`. To update the expected payoff after bandit `j` was played for the $n_{th}$ time, we have
-$$\bar{x}_ n=\frac{\bar{x}_{n-1}*\times*(n-1)+x_n}{n}$$
+$$\bar{x}_n=\frac{\bar{x}_{n-1}*\times*(n-1)+x_n}{n}$$
 
 This calculates the mean at constant time, i.e., it requires only 3 values to calculate the mean regardless of the value of $n$: $\bar{x}_{n-1}$, $x_n$, and $n$, whereas the number of values required to calculate the mean with the formula
 $$\bar{x}_n=\frac{\sum_{i=1}^n{x_i}}{n}$$
@@ -74,7 +74,7 @@ increases with $n$.
 It should be obvious that the above `greedy` algorithm has an obvious problem: once it finds a bandit with high enough payoff, it rarely switches. In other words, it almost never explores. `Epsilon Greedy` provides simple fix:
 ```
 for i in [1, 50]:
-    choose each bandit 10 times
+    choose each bandit randomly
 while True:
     p = random number in [0, 1]
     if p < epsilon:
@@ -101,6 +101,8 @@ from scipy.stats import beta
 N_bandits = 5
 # set the number of trials
 N = 100000
+# set the number of trials to try all bandits
+N_start = 50
 
 class BayesianAB:
   def __init__(
@@ -148,7 +150,11 @@ class BayesianAB:
 
     self.history.append(self.prob_win.copy())
 
-    for k in range(1, N):
+    for k in range(0, N_start):
+        i = random.randrange(0, len(self.prob_win))
+        self.update(i, k)
+
+    for k in range(N_start, N):
       # find index of the largest value in prob_win
       i = np.argmax(self.prob_win)
 
