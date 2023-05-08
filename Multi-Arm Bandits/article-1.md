@@ -49,3 +49,10 @@ We will begin our in-depth discuss of algorithms with `Epsilon Greedy`. For each
 
 I learned about these algorithms from the Udemy course [Bayesian Machine Learning in Python: A/B Testing](https://www.udemy.com/course/bayesian-machine-learning-in-python-ab-testing/). Although `Python` scripts were provided in the course, the scripts that I will show you are the ones I have built on my own, although I did update some of them based on those provided in the course to make it more efficient or general.
 
+## References (Incomplete)
+
+https://en.m.wikipedia.org/wiki/Multi-armed_bandit
+
+https://www.tensorflow.org/agents/tutorials/intro_bandit
+
+https://www.optimizely.com/optimization-glossary/multi-armed-bandit/
