@@ -91,15 +91,12 @@ Let's now move onto the actual implementation in `Python`. Note that there are l
 
 ```python
 import numpy as np
-import pandas as pd
 import random
-import matplotlib.pyplot as plt
-import seaborn as sns
-from scipy.stats import beta
 
 # set the number of bandits
 N_bandits = 5
-# set the number of trials
+# set the number of trials/visitors
+# only in demonstration
 N = 100000
 # set the number of trials to try all bandits
 N_start = 50
@@ -109,10 +106,10 @@ class BayesianAB:
       self,
       number_of_bandits: int = 2,
   ):
-    self.prob_true= [0] * number_of_bandits # only in demonstration
+    self.prob_true = [0] * number_of_bandits # only in demonstration
     self.prob_win = [0] * number_of_bandits
     self.history = []
-    self.count = [0] * number_of_bandits # only in demonstration
+    self.count = [0] * number_of_bandits
 
     # set the last bandit to have a win rate of 0.75 and the rest lower
     # only in demonstration
@@ -170,6 +167,166 @@ class BayesianAB:
 
     return self.history
 ```
+
+Let's take a closer look at tht script. First, we import two libraries: `numpy` and `random`:
+```python
+import numpy as np
+import random
+```
+
+We then set three global parameters:
+```python
+# set the number of bandits
+N_bandits = 5
+# set the number of trials/visitors
+N = 100000
+# set the number of trials to try all bandits
+N_start = 50
+```
+In practice, the value of `N_bandits` would depend on the number of versions your experiment is set out to test, and the number of visitors, `N`, is not necessary.
+
+In this script, we are creating a `class` named `BayesianAB`. Eventually, this class will include all the algorithms we cover in this article. We initiate the class with the following values:
+```python
+class BayesianAB:
+  def __init__(
+      self,
+      number_of_bandits: int = 2,
+  ):
+    self.prob_true = [0] * number_of_bandits # only in demonstration
+    self.prob_win = [0] * number_of_bandits
+    self.history = []
+    self.count = [0] * number_of_bandits
+```
+The `BayesianAB` class has a default of 2 bandits. We first pre-allocate four lists to store values needed for the algorithm:
+* `prob_true`: stores the *true* probability of each bandit. These probabilities are to be generated next. In practice, you do not know these true probabilities;
+* `prob_win`: stores the *empirical* probability of each bandit. Values in this list are to be updated during the experiment;
+* `history`: stores the history of `prob_win` in each trial. This is important for both updating the mean at constant time (see above) and evaluation of bandit performance. We will plot the `history` later;
+* `count`: stores the number of times each bandit was chosen;
+
+The following lines generates the *true* probabilities:
+```python
+    # set the last bandit to have a win rate of 0.75 and the rest lower
+    # only in demonstration
+    self.prob_true[-1] = 0.75
+    for i in range(0, number_of_bandits-1):
+      self.prob_true[i] = round(0.75 - random.uniform(0.05, 0.65), 2)
+```
+The last bandit is given a win probability of .75, and rest of them somewhat random but lower than .75. An alternative method is to hardcode the probabilities. I used this approach to allow flexibility in specifying the number of bandits using `N_bandits` (or `number_of_bandits` inside the `BayesianAB` class).
+
+Next, we define two functions commonly used by almost all algorithms:
+```python
+  # Receives a random value of 0 or 1
+  # only in demonstration
+  def pull(
+      self,
+      i,
+  ) -> bool:
+    return random.random() < self.prob_true[i]
+
+  # Updates the mean
+  def update(
+      self,
+      i,
+      k,
+  ):
+    outcome = self.pull(i)
+    # may use a constant discount rate to discount past
+    self.prob_win[i] = (self.prob_win[i] * k + outcome) / (k+1)
+    self.history.append(self.prob_win.copy())
+    self.count[i] += 1
+```
+The first function returns either True or False depended on if the value of `random.random()` is less than the true probability of bandit $i$. This is unnecessary in practice. Instead, a call to either the `BayesianAB` class or specific method (such as `epsilon greedy`) inside `BayesianAB` should be triggered with a new visitor, and by the end of the visit, you would know if the visitor has purchased (True) or not (False). In `Python`, `True` is given a numerical value of 1 and `False` 0.
+
+The `update` function updates the mean. It also adds the new empirical probabilities to the list `history` and increase the count of bandit $i$ being picked by 1.
+
+Here is the actual method inside `BayesianAB` that implements `epsilon greedy`:
+```python
+  def epsilon_greedy(
+      self,
+      epsilon: float, # decay epsilon?
+  ) -> list:
+
+    self.history.append(self.prob_win.copy())
+
+    for k in range(0, N_start):
+        i = random.randrange(0, len(self.prob_win))
+        self.update(i, k)
+
+    for k in range(N_start, N):
+      # find index of the largest value in prob_win
+      i = np.argmax(self.prob_win)
+
+      if random.random() < epsilon:
+        j = random.randrange(0, len(self.prob_win))
+        # If the randomly picked bandit is the same as one from argmax, pick a different one
+        while j == i:
+          j = random.randrange(0, len(self.prob_win))
+        else:
+          i = j
+
+      self.update(i, k)
+
+    return self.history
+```
+
+It essentially follows our pseudocode. In the first `for` loop, it assigns visitors randomly to the 5 bandits for the first 50 visitors (given by `N_start`). After each assignment, it calls the `update` function to update the mean. Starting with the 51st visitor, the second `for` loop is triggered and the following steps follow:
+1. Find out which bandit ($i$) has the highest expected payoff;
+2. Checks if a random value is smaller than `epsilon` (to be specified when the `epsilon_greedy` method is called). If this is `True`, then a random bandit ($j$) is selected;
+3. If the randomly selected bandit is the same as the one with the highest expected payoff ($j=i$), then choose randomly choose another bandit, until the two are not the same;
+4. Update the mean for the chosen bandit by calling the `update` function.
+
+The `epsilon_greedy` method returns the complete history, which stores all information during the run as discussed earlier.
+
+To call `epsilon_greedy` and examine the results, we execute the following:
+```python
+eg = BayesianAB(N_bandits)
+print(f'The true win rates: {eg.prob_true}')
+eg_history = eg.epsilon_greedy(epsilon=0.5)
+print(f'The observed win rates: {eg.prob_win}')
+print(f'Number of times each bandit was played: {eg.count}')
+```
+Here, we call `epsilon_greedy` and give a value of 0.5 as `epsilon`. We also print out the true probabilities, the empirical probabilities, and the number of times each bandit was played. Here is the output from a typical run:
+```python
+The true win rates: [0.23, 0.51, 0.64, 0.54, 0.75]
+The observed win rates: [0.17332887288252724, 0.44042332341430895, 0.627573482612825, 0.41644940253607143, 0.5469304125560488]
+Number of times each bandit was played: [12341, 12500, 49985, 12732, 12442]
+```
+
+In the above run, the best bandit was NOT the one that got chosen the most times. The second best bandit, with win probability of 0.64, was picked about half of the time, as dictated by the value of `epsilon`. This is due to the bandit with a 0.64 win rate did exceptional well among the first 50 visitors, and since it is close enough to the win rate of the best version, random jumps to the version with a 0.75 win rate were not enough to 'flip' the results.
+
+Also note that the empirical probabilities are not guaranteed to converge to the true probabilities except for the 'chosen' one, in this case, the third bandit with a win rate of 64%.
+
+We can also visualize the outcome with the following code:
+```python
+def plot_history(
+    history: list,
+    prob_true: list,
+    k = N,
+):
+
+  df_history = pd.DataFrame(history[:k])
+  plt.figure(figsize=(20,5))
+
+  # Define the color palette
+  colors = sns.color_palette("Set2", len(prob_true))
+
+  for i in range(len(prob_true)):
+    sns.lineplot(x=df_history.index, y=df_history[i], color=colors[i])
+  
+  # Create custom legend using prob_true and colors
+  custom_legend = [plt.Line2D([], [], color=colors[i], label=prob_true[i]) for i in range(len(prob_true))]
+  plt.legend(handles=custom_legend)
+```
+Then execute:
+```python
+plot_history(history=eg.history, prob_true=eg.prob_true)
+```
+
+Here is the output from the above run:
+![Epsilon Greedy](eg.png)
+
+## Optimistic Initial Values
+
 
 ## References (Incomplete)
 
