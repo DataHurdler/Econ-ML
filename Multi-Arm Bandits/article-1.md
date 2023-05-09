@@ -23,7 +23,7 @@ where $s_p=\sqrt{\frac{(n_A-1)s_A^2+(n_B-1)s_B^2}{n_A+n_B-2}}$ is the pooled sta
 Suppose you know that $s_A=s_B$ for the two versions in your A/B test, which we will denote as $s$. Also suppose, for simplicity, you want $n_A=n_B$. You can solve for $n_i$ from the above power analysis formula and obtain:
 $$N=\frac{4t^2s^2}{(\bar{x}_A-\bar{x}_B)^2}$$
 where $N$ is the total sample size ($n_A+n_B$). It is easy to see that you will need a larger sample size if
-* the expected difference between the two versions are smaller.
+* the expected difference between the two versions are smaller;
 * you want a better significance level, e.g., 1% instead of 5%;
 * the standard deviation is bigger, i.e., dollars spent are more dispersed among individuals;
 
