@@ -70,7 +70,7 @@ I used **bandit** instead of **version** here, and will be using them interchang
 Let's take a closer look at the pseudocode. In the pseudocode, $i$ indexes visitor, $j$ indexes the website version (or bandit), and $x$ is 1 when the visitor buys and 0 otherwise. Furthermore, `update_mean()` is a function that takes the new value of `x` and updates the expected payoff for bandit `j`. To update the expected payoff after bandit `j` was played for the $n_{th}$ time, we have
 $$\bar{x}_n=\frac{\bar{x}_{n-1}\times(n-1)+x_n}{n}$$
 
-This calculates the mean in *constant time8, i.e., it requires only 3 values to calculate the mean regardless of the value of $n$: $\bar{x}_{n-1}$, $x_n$, and $n$, whereas the number of values required to calculate the mean with the formula
+This calculates the mean in *constant time*, i.e., it requires only 3 values to calculate the mean regardless of the value of $n$: $\bar{x}_{n-1}$, $x_n$, and $n$, whereas the number of values required to calculate the mean with the formula
 $$\bar{x}_n=\frac{\sum_{i=1}^n{x_i}}{n}$$
 increases with $n$.
 
@@ -174,6 +174,7 @@ class BayesianAB:
 ```
 
 Let's break it down. First, we import two libraries: `numpy` and `random`. We will be using functions from these libraries such as `argmax` from `numpy` and `randrange` from `random`:
+
 ```python
 import numpy as np
 import random
@@ -208,7 +209,7 @@ class BayesianAB:
     self.b = [1] * number_of_bandits
 ```
 
-The `BayesianAB` class has a default of 2 bandits. We first pre-allocate four lists to store values needed for the algorithms:
+The `BayesianAB` class has a default of 2 bandits. We first pre-allocate six lists to store values needed for the algorithms:
 * `prob_true` stores the *true* probability of each bandit. These probabilities are to be generated next. In practice, you do not know these true probabilities;
 * `prob_win` stores the *empirical* probability of each bandit. Values in this list are to be updated during each round of the experiment;
 * `history` stores the history of `prob_win` in each trial. This is important for both updating the mean in constant time (see above) and the evaluation of bandit performance;
