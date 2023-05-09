@@ -417,7 +417,136 @@ The observed win rates: [0.4299, 0.4039, 0.5200, 0.4130, 0.7492]
 Number of times each bandit was played: [206, 178, 386, 187, 99042]
 </div></code></code></pre>
 <p dir="auto"><img src="ucb1.png" alt="UCB1" data-src="ucb1.png"></p>
-<h2 dir="auto" id="thompson-sampling-bayesian">Thompson Sampling (Bayesian)</h2>
+<p dir="auto">Unlike <code>epsilon greedy</code>, <code>UCB1</code> has not problem identifying the best version even though several others are quite close in their true win rates.</p>
+<h2 dir="auto" id="thompson-sampling-bayesian-bandits">Thompson Sampling (Bayesian Bandits)</h2>
+<p dir="auto"><code>Thompson Sampling</code>, or what is sometimes known as <code>Bayesian Bandits</code>, takes another (big) step forward from UCB. In our discussion on UCB, we acknowledged the fact that using a single expected value to represent the performance of a version is not accurate. To tackle this, UCB1 adds a &quot;bonus&quot;: the bonus is smaller for the bandits that were played more, and larger for the bandits that were played less.</p>
+<p dir="auto">To push this further, and as the name <code>Thompson Sampling</code> is hinted, we may ask if we could construct a probability distribution to describe the expected values of a version. As it turns out, this is possible, as everything, including parameters, are random variables in Bayesian Statistics. For example, when we think about Normal Distribution, we often speak of fixed values of mean and variance. But in Bayesian Statistics, the mean and variance of a Normal Distribution are two random variables and they can be described as probability distributions.</p>
+<p dir="auto">The mathematical derivation of <code>Thompson Sampling</code> requires the use of <a href="https://en.wikipedia.org/wiki/Conjugate_prior">conjugate prior</a>, which I will discuss here briefly.</p>
+<h3 dir="auto" id="conjugate-prior">Conjugate Prior</h3>
+<p dir="auto">Recall the Bayes Rule:</p>
+<section><eqn><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi>p</mi><mo stretchy="false">(</mo><mi>θ</mi><mo>∣</mo><mi>X</mi><mo stretchy="false">)</mo><mo>=</mo><mfrac><mrow><mi>p</mi><mo stretchy="false">(</mo><mi>X</mi><mo>∣</mo><mi>θ</mi><mo stretchy="false">)</mo><mi>p</mi><mo stretchy="false">(</mo><mi>θ</mi><mo stretchy="false">)</mo></mrow><mrow><mi>p</mi><mo stretchy="false">(</mo><mi>X</mi><mo stretchy="false">)</mo></mrow></mfrac></mrow><annotation encoding="application/x-tex">p(\theta \mid X)=\frac{p(X \mid \theta)p(\theta)}{p(X)}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">p</span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.02778em;">θ</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">∣</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.07847em;">X</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:2.363em;vertical-align:-0.936em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.427em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal">p</span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.07847em;">X</span><span class="mclose">)</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal">p</span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.07847em;">X</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">∣</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mord mathnormal" style="margin-right:0.02778em;">θ</span><span class="mclose">)</span><span class="mord mathnormal">p</span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.02778em;">θ</span><span class="mclose">)</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.936em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span></span></eqn></section></math>
+<p dir="auto">where the four parts are called, respectively</p>
+<ul dir="auto">
+<li dir="auto"><eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo stretchy="false">(</mo><mi>θ</mi><mo>∣</mo><mi>X</mi><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">p(\theta \mid X)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">p</span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.02778em;">θ</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">∣</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.07847em;">X</span><span class="mclose">)</span></span></span></span></eq>: Posterior distribution</li>
+<li dir="auto"><eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo stretchy="false">(</mo><mi>X</mi><mo>∣</mo><mi>θ</mi><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">p(X \mid \theta)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">p</span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.07847em;">X</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">∣</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.02778em;">θ</span><span class="mclose">)</span></span></span></span></eq>: Likelihood function</li>
+<li dir="auto"><eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo stretchy="false">(</mo><mi>θ</mi><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">p(\theta)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">p</span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.02778em;">θ</span><span class="mclose">)</span></span></span></span></eq>: Prior probability distribution</li>
+<li dir="auto"><eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo stretchy="false">(</mo><mi>X</mi><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">p(X)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">p</span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.07847em;">X</span><span class="mclose">)</span></span></span></span></eq>: Evidence</li>
+</ul>
+<p dir="auto">In Bayesian Statistics, if the posterior distribution is in the same probability distribution family as the prior probability distribution, the prior and posterior are then called conjugate distributions, and the prior is called a <strong>conjugate prior</strong> for the likelihood function.</p>
+<p dir="auto">With conjugate priors, the updating in a Bayesian approach reduces to the updates of hyperparameters that are used to describe both the prior and posterior distribution, since they are the same. I will leave the details to a Statistics textbook, but for our purpose, since our example concerns of binary outcomes (buy or not buy), our likelihood function is that of Bernoulli. As it turns out, the conjugate prior for a Bernoulli likelihood function is the Beta distribution, which has two hyperparameters, denoted as <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>a</mi></mrow><annotation encoding="application/x-tex">a</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.43056em;vertical-align:0em;"></span><span class="mord mathnormal">a</span></span></span></span></eq> and <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>b</mi></mrow><annotation encoding="application/x-tex">b</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.69444em;vertical-align:0em;"></span><span class="mord mathnormal">b</span></span></span></span></eq>.</p>
+<p dir="auto">Now that we have established that Beta distribution is the conjugate prior for Bernoulli, the problem is <code>Thompson Sampling</code> is reduced to</p>
+<ol dir="auto">
+<li dir="auto">sample from the Beta distribution</li>
+<li dir="auto">find the highest expected value</li>
+</ol>
+<h2 dir="auto" id="thompson-sampling-code">Thompson Sampling: Code</h2>
+<p dir="auto">Since <code>Thompson Sampling</code> is mechanical different from the previous algorithms, we need to develop special functions and methods to implement <code>Thompson Sampling</code>. Here is a pseudocode:</p>
+<pre><code dir="auto"><code><div>loop:
+    b.sample() = sampling from Beta function for bandit b
+    j = argmax(b.sample() for b bandits)
+    x = T/F from playing bandit j
+    bandit[j].update(x)
+</div></code></code></pre>
+<p dir="auto">The two functions that need to be added are <code>sample()</code> and <code>update()</code>. Here is the <code>Python</code> implementation:</p>
+<pre><code class="code-line language-python" dir="auto"><div><span class="hljs-keyword">from</span> scipy.stats <span class="hljs-keyword">import</span> beta
+
+  <span class="hljs-comment"># bayesian_bandits sample</span>
+  <span class="hljs-keyword">def</span> <span class="hljs-title function_">bb_sample</span>(<span class="hljs-params">
+      self,
+      a: <span class="hljs-built_in">int</span>, <span class="hljs-comment"># alpha</span>
+      b: <span class="hljs-built_in">int</span>, <span class="hljs-comment"># beta</span>
+      sample_size: <span class="hljs-built_in">int</span> = <span class="hljs-number">10</span>,
+  </span>) -&gt; <span class="hljs-built_in">list</span>:
+
+    <span class="hljs-keyword">return</span> np.random.beta(a, b, sample_size)
+  
+  <span class="hljs-comment"># bayesian_bandits update</span>
+  <span class="hljs-keyword">def</span> <span class="hljs-title function_">bb_update</span>(<span class="hljs-params">
+      self,
+      a: <span class="hljs-built_in">list</span>,
+      b: <span class="hljs-built_in">list</span>,
+      i,
+  </span>):
+
+    outcome = self.pull(i)
+    <span class="hljs-comment"># may use a constant discount rate to discount past</span>
+    a[i] += outcome
+    b[i] += <span class="hljs-number">1</span> - outcome
+    self.count[i] += <span class="hljs-number">1</span>
+  
+    <span class="hljs-keyword">return</span> a, b
+  
+  <span class="hljs-comment">####################</span>
+  <span class="hljs-comment"># Bayesian Bandits</span>
+  <span class="hljs-comment"># For Bernoulli distribution, the conjugate prior is Beta distribution</span>
+  <span class="hljs-keyword">def</span> <span class="hljs-title function_">bayesian_bandits</span>(<span class="hljs-params">
+      self,
+      sample_size: <span class="hljs-built_in">int</span> = <span class="hljs-number">10</span>,
+  </span>) -&gt; <span class="hljs-built_in">list</span>:
+
+    a_hist, b_hist = [], []
+    a_hist.append(self.a.copy())
+    b_hist.append(self.b.copy())
+
+    <span class="hljs-keyword">for</span> k <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(<span class="hljs-number">1</span>, N):
+      sample_max = []
+
+      <span class="hljs-keyword">for</span> m <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(<span class="hljs-built_in">len</span>(self.prob_true)):
+        m_max = np.<span class="hljs-built_in">max</span>(self.bb_sample(self.a[m], self.b[m], sample_size))
+        sample_max.append(m_max.copy())
+      
+      i = np.argmax(sample_max)
+
+      self.a, self.b = self.bb_update(self.a, self.b, i)
+      a_hist.append(self.a.copy())
+      b_hist.append(self.b.copy())
+      
+    self.history = [a_hist, b_hist]
+    <span class="hljs-keyword">return</span> self.history
+</div></code></pre>
+<p dir="auto">Let's walk through this script. First, we need to import <code>beta</code> from <code>scipy.stats</code> since the conjugate prior for Bernoulli distribution is Beta distribution. The first function, <code>bb_sample()</code>, returns 10 random values (by default) from the <code>Beta</code> function based on the hyperparameters <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>a</mi></mrow><annotation encoding="application/x-tex">a</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.43056em;vertical-align:0em;"></span><span class="mord mathnormal">a</span></span></span></span></eq> and <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>b</mi></mrow><annotation encoding="application/x-tex">b</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.69444em;vertical-align:0em;"></span><span class="mord mathnormal">b</span></span></span></span></eq>. The second function, <code>bb_update()</code> updates the hyperparameter values based on the outcome from the last visitor for bandit <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>i</mi></mrow><annotation encoding="application/x-tex">i</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.65952em;vertical-align:0em;"></span><span class="mord mathnormal">i</span></span></span></span></eq>: if the outcome was <code>True</code>, then the value of <code>alpha</code> increases by 1; otherwise, the value of <code>beta</code> increases by 1.</p>
+<p dir="auto">For the actual implementation of the <code>Bayesian Bandits</code> in <code>bayesian_bandits()</code>, it is largely consistent with what we have been doing in other algorithms. The main differences are:</p>
+<ol dir="auto">
+<li dir="auto">Instead of storing the history of outcomes, we store the history of the values of <code>alpha</code> and <code>beta</code>;</li>
+<li dir="auto">In each iteration, we first find the maximum value from the sample of values of each version, then pick the best from this set of maximum values;</li>
+<li dir="auto">As described earlier, the updating is different. Instead of updating the mean, we update the values of <code>alpha</code> and <code>beta</code>.</li>
+</ol>
+<p dir="auto">Due to these changes, we also need to update the script for visualizing the history:</p>
+<pre><code class="code-line language-python" dir="auto"><div><span class="hljs-keyword">def</span> <span class="hljs-title function_">bb_plot_history</span>(<span class="hljs-params">
+    history: <span class="hljs-built_in">list</span>,
+    prob_true: <span class="hljs-built_in">list</span>,
+    k = -<span class="hljs-number">1</span>,
+</span>):
+
+    x = np.linspace(<span class="hljs-number">0</span>, <span class="hljs-number">1</span>, <span class="hljs-number">100</span>)
+    legend_str = [[]] * <span class="hljs-built_in">len</span>(prob_true)
+    plt.figure(figsize=(<span class="hljs-number">20</span>,<span class="hljs-number">5</span>))
+    
+    <span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(<span class="hljs-built_in">len</span>(prob_true)):
+      a = history[<span class="hljs-number">0</span>][k][i]
+      b = history[<span class="hljs-number">1</span>][k][i]
+      y = beta.pdf(x, a, b)
+      legend_str[i] = <span class="hljs-string">f&#x27;<span class="hljs-subst">{prob_true[i]}</span>, alpha: <span class="hljs-subst">{a}</span>, beta: <span class="hljs-subst">{b}</span>&#x27;</span>
+      plt.plot(x, y)
+
+    plt.legend(legend_str)
+</div></code></pre>
+<p dir="auto">We can now simulate <code>Bayesian Bandits</code> by executing the following:</p>
+<pre><code class="code-line language-python" dir="auto"><div>bb = BayesianAB(N_bandits)
+<span class="hljs-built_in">print</span>(<span class="hljs-string">f&#x27;The true win rates: <span class="hljs-subst">{bb.prob_true}</span>&#x27;</span>)
+bb_history = bb.bayesian_bandits(sample_size=<span class="hljs-number">10</span>)
+<span class="hljs-built_in">print</span>(<span class="hljs-string">f&#x27;The observed win rates: <span class="hljs-subst">{np.divide(bb.history[<span class="hljs-number">0</span>][-<span class="hljs-number">1</span>], bb.count)}</span>&#x27;</span>)
+<span class="hljs-built_in">print</span>(<span class="hljs-string">f&#x27;Number of times each bandit was played: <span class="hljs-subst">{bb.count}</span>&#x27;</span>)
+
+<span class="hljs-comment"># plot the entire experiment history</span>
+bb_plot_history(history=bb.history, prob_true=bb.prob_true)
+</div></code></pre>
+<p dir="auto">Outcomes from a typical run look like the following:</p>
+<p dir="auto"><img src="bb.png" alt="Bayesian Bandits" data-src="bb.png"></p>
+<h2 dir="auto" id="the-important-take-aways">The Important Take-aways</h2>
+<p dir="auto">blah blah blah</p>
+<h2 dir="auto" id="back-to-economics-and-rct">Back to Economics and RCT</h2>
+<p dir="auto">blah blah blah</p>
 <h2 dir="auto" id="references-incomplete">References (Incomplete)</h2>
 <p dir="auto"><a href="https://en.m.wikipedia.org/wiki/Multi-armed_bandit">https://en.m.wikipedia.org/wiki/Multi-armed_bandit</a></p>
 <p dir="auto"><a href="https://www.tensorflow.org/agents/tutorials/intro_bandit">https://www.tensorflow.org/agents/tutorials/intro_bandit</a></p>

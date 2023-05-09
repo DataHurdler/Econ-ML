@@ -483,8 +483,124 @@ Now that we have established that Beta distribution is the conjugate prior for B
 
 ## Thompson Sampling: Code
 
-Here is the pseudocode for `Thompson Sampling`:
+Since `Thompson Sampling` is mechanical different from the previous algorithms, we need to develop special functions and methods to implement `Thompson Sampling`. Here is a pseudocode:
+```
+loop:
+    b.sample() = sampling from Beta function for bandit b
+    j = argmax(b.sample() for b bandits)
+    x = T/F from playing bandit j
+    bandit[j].update(x)
+```
+The two functions that need to be added are `sample()` and `update()`. Here is the `Python` implementation:
+```python
+from scipy.stats import beta
 
+  # bayesian_bandits sample
+  def bb_sample(
+      self,
+      a: int, # alpha
+      b: int, # beta
+      sample_size: int = 10,
+  ) -> list:
+
+    return np.random.beta(a, b, sample_size)
+  
+  # bayesian_bandits update
+  def bb_update(
+      self,
+      a: list,
+      b: list,
+      i,
+  ):
+
+    outcome = self.pull(i)
+    # may use a constant discount rate to discount past
+    a[i] += outcome
+    b[i] += 1 - outcome
+    self.count[i] += 1
+  
+    return a, b
+  
+  ####################
+  # Bayesian Bandits
+  # For Bernoulli distribution, the conjugate prior is Beta distribution
+  def bayesian_bandits(
+      self,
+      sample_size: int = 10,
+  ) -> list:
+
+    a_hist, b_hist = [], []
+    a_hist.append(self.a.copy())
+    b_hist.append(self.b.copy())
+
+    for k in range(1, N):
+      sample_max = []
+
+      for m in range(len(self.prob_true)):
+        m_max = np.max(self.bb_sample(self.a[m], self.b[m], sample_size))
+        sample_max.append(m_max.copy())
+      
+      i = np.argmax(sample_max)
+
+      self.a, self.b = self.bb_update(self.a, self.b, i)
+      a_hist.append(self.a.copy())
+      b_hist.append(self.b.copy())
+      
+    self.history = [a_hist, b_hist]
+    return self.history
+```
+
+Let's walk through this script. First, we need to import `beta` from `scipy.stats` since the conjugate prior for Bernoulli distribution is Beta distribution. The first function, ``bb_sample()``, returns 10 random values (by default) from the `Beta` function based on the hyperparameters $a$ and $b$. The second function, ``bb_update()`` updates the hyperparameter values based on the outcome from the last visitor for bandit $i$: if the outcome was `True`, then the value of `alpha` increases by 1; otherwise, the value of `beta` increases by 1.
+
+For the actual implementation of the `Bayesian Bandits` in `bayesian_bandits()`, it is largely consistent with what we have been doing in other algorithms. The main differences are:
+1. Instead of storing the history of outcomes, we store the history of the values of `alpha` and `beta`;
+2. In each iteration, we first find the maximum value from the sample of values of each version, then pick the best from this set of maximum values;
+3. As described earlier, the updating is different. Instead of updating the mean, we update the values of `alpha` and `beta`.
+
+Due to these changes, we also need to update the script for visualizing the history:
+```python
+def bb_plot_history(
+    history: list,
+    prob_true: list,
+    k = -1,
+):
+
+    x = np.linspace(0, 1, 100)
+    legend_str = [[]] * len(prob_true)
+    plt.figure(figsize=(20,5))
+    
+    for i in range(len(prob_true)):
+      a = history[0][k][i]
+      b = history[1][k][i]
+      y = beta.pdf(x, a, b)
+      legend_str[i] = f'{prob_true[i]}, alpha: {a}, beta: {b}'
+      plt.plot(x, y)
+
+    plt.legend(legend_str)
+```
+
+We can now simulate `Bayesian Bandits` by executing the following:
+
+```python
+bb = BayesianAB(N_bandits)
+print(f'The true win rates: {bb.prob_true}')
+bb_history = bb.bayesian_bandits(sample_size=10)
+print(f'The observed win rates: {np.divide(bb.history[0][-1], bb.count)}')
+print(f'Number of times each bandit was played: {bb.count}')
+
+# plot the entire experiment history
+bb_plot_history(history=bb.history, prob_true=bb.prob_true)
+```
+
+Outcomes from a typical run look like the following:
+
+![Bayesian Bandits](bb.png)
+
+## The Important Take-aways
+blah blah blah
+
+## Back to Economics and RCT
+blah blah blah
 
 ## References (Incomplete)
 
