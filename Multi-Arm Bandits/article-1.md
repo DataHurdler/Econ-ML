@@ -91,7 +91,7 @@ loop:
 
 As the pseudocode shows, a random value is drawn when a new visitor has arrived. If the random value is smaller than the threshold `epsilon`, set before the start of the experiment, then a random bandit is picked. Note that this randomly picked bandit can be the same as the one picked by `argmax`. To exclude such case only requires a few more lines of code. However, the benefit of doing so is not obvious.
 
-Let's now move onto the actual implementation of `Epsilon Greedy` in `Python`. Note that there are lines with comment "*only in demonstration*". These are lines to generate the *true* probabilities of different bandits, which you obvious do not know when running a real-world experiment.
+Let's now move onto the actual implementation of `Epsilon Greedy` in `Python`. Note that there are lines with comment "*only in demonstration*". These are codes to generate the *true* probabilities of different bandits, which you obvious do not know when running a real-world experiment.
 
 ```python
 import numpy as np
