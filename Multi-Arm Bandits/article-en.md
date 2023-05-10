@@ -87,7 +87,7 @@ loop:
         j = choose a bandit at random
     else:
         j = argmax(expected bandit win rates)
-    x = T/F from playing bandit j
+    x = Reward (1 or 0) from playing bandit j
     bandit[j].update_mean(x)
 ```
 
