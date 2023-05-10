@@ -5,9 +5,9 @@ Bayesian Approaches for Randomized Controlled Trials
 
 ## Introduction
 
-Randomized Controlled Trial (RCT) is the gold standard for establishing causality in experimental methods such as clinical trials for new drugs or field experiments in social sciences and economics. In business especially e-commerce, RCT is known as A/B/N test. The main idea of RCT and A/B/N test is straightforward: individuals are randomly divided into groups to receive different treatments. Afterwards, the outcomes are being valuated and compared in order to find out which treatment works better/best. In RCT, a control group, where individuals receive a "placebo", is included. Note that placebo should be considered as a type of treatment too and individuals who receive a placebo are not getting "nothing". A placebo is something that has no therapeutic effect, i.e., it is not designed to cure a disease or an illness. But a placebo can positively impact the wellbeing of individuals who received it, if due to nothing but psychological effects. It would be rather wrong to expect "no effect" from the the controlled group that receives the placebo in an RCT.
+Randomized Controlled Trial (RCT) is the gold standard for establishing causality in experimental methods such as clinical trials for new drugs or field experiments in social sciences and economics. In business, especially e-commerce, RCT is known as A/B/N test. The main idea of RCT and A/B/N test is straightforward: individuals are randomly divided into groups to receive different treatments. Afterwards, the outcomes are being valuated and compared in order to find out which treatment works better/best. In RCT, a control group, where individuals receive a "placebo", is included. Note that placebo should be considered as a type of treatment too and individuals who receive a placebo are not getting "nothing". A placebo is something that has no therapeutic effect, i.e., it is not designed to cure a disease or an illness. But a placebo can positively impact the well-being of individuals who received it, if due to nothing but psychological effects. As a result, it would be rather wrong to expect "no effect" from the the controlled group that receives the placebo in an RCT.
 
-For the rest of this article, I will be using A/B/N test as the example because I want to stay away from the nitty-gritty details of RCT. We will come back to RCT toward the end. I am using "A/B/N" to include tests with more than 2 versions. If you are only comparing two versions, it is an A/B test.
+In the rest of this article, I will be using A/B/N test as the example because I want to stay away from the nitty-gritty details of RCT. We will come back to RCT toward the end. I am using "A/B/N" to include tests with more than 2 versions. If you are only comparing two versions, it is an A/B test.
 
 When I was interviewing for a data scientist job in 2022, the following was one of the interview questions: We are going to run an A/B test on a client's website. How long do we need to run the experiment for? Back then I knew about how to find minimum sample size based on hypothesis testing in Statistics, so I framed my answer that way. But I stopped in the middle while answering the question. Something I did not think seriously enough about popped into my head: how would I know the standard deviation, one of the required values to carry out the calculation for sample size, before we even run the experiment? My interview went downhill from there. Needless to say, I did not get the job. However, the interviewer was nice enough to tell me that I should look into "power analysis".
 
@@ -50,9 +50,11 @@ We will begin our in-depth discussion of algorithms with `Epsilon Greedy`. For e
 * pseudocode
 * `Python` code
 
+<!--
 I learned about these algorithms from the Udemy course [Bayesian Machine Learning in Python: A/B Testing](https://www.udemy.com/course/bayesian-machine-learning-in-python-ab-testing/). Although `Python` scripts were provided in the course, the ones that I will show in this article were first built on my own, then updated based on those provided in the course for better efficiency and practicality.
+-->
 
-Algorithms in the `Greedy` family applies a simple logic: choose the version that gives the best *historical* expected payoff. For simplicity, let's consider an e-commerce website that has 5 different designs but sells a single product: an EveryDay-Carry (EDC) musical instrument for 69.99 dollars. If we run an A/B/N test on the designs, only 2 outcomes are possible from each visitor: buy or not buy.
+Algorithms in the `Greedy` family applies a simple logic: choose the version that gives the best *observed* expected payoff. For simplicity, let's consider an e-commerce website that has 5 different designs but sells a single product: an EveryDay-Carry (EDC) musical instrument for 69.99 dollars. If we run an A/B/N test on the designs, only 2 outcomes are possible from each visitor: buy or not buy.
 
 While not necessary, we can try out all 5 algorithms in the beginning. For example, for the first 50 visitors, we send them to each design with equal probability. From that point on, the algorithm finds the version that gives the best expected payoff, and play that version. Here is the pseudocode for a simple `Greedy` algorithm:
 
@@ -61,20 +63,20 @@ for i in [1, 50]:
     choose each bandit randomly
 loop:
     j = argmax(expected bandit win rates)
-    x = T/F from playing bandit j
+    x = Reward (1 or 0) from playing bandit j
     bandit[j].update_mean(x)
 ```
 
-I used **bandit** instead of **version** here, and will be using them interchangeably, because the problem we are working on is known as the ``Multi-Armed Bandits`` problem in probability theory and machine learning. The analogy stems from choosing from multiple slot machines in a casino since a single slot machine is referred to as a "one-armed bandit".
+I used **bandit** instead of **version** here, and will be using these two terms interchangeably, because the problem we are working on is commonly known as the ``Multi-Armed Bandits`` problem in probability theory and machine learning. The analogy stems from choosing from multiple slot machines in a casino since a single slot machine is referred to as a "one-armed bandit".
 
 Let's take a closer look at the pseudocode. In the pseudocode, $i$ indexes visitor, $j$ indexes the website version (or bandit), and $x$ is 1 when the visitor buys and 0 otherwise. Furthermore, `update_mean()` is a function that takes the new value of `x` and updates the expected payoff for bandit `j`. To update the expected payoff after bandit `j` was played for the $n_{th}$ time, we have
-$$\bar{x}_n=\frac{\bar{x}_{n-1}\times(n-1)+x_n}{n}$$
+$$\bar{x}_n=\bar{x}_{n-1}+\frac{x_n-\bar{x}_{n-1}}{n}$$
 
-This calculates the mean in *constant time*, i.e., it requires only 3 values to calculate the mean regardless of the value of $n$: $\bar{x}_{n-1}$, $x_n$, and $n$, whereas the number of values required to calculate the mean with the formula
+This calculates the mean in *constant time and memory*, i.e., it requires only 3 values to calculate the mean, $\bar{x}_n$, regardless of the value of $n$: $\bar{x}_{n-1}$, $x_n$, and $n$, whereas the number of values required to calculate the mean with the formula
 $$\bar{x}_n=\frac{\sum_{i=1}^n{x_i}}{n}$$
 increases with $n$.
 
-It should be obvious that the above `Greedy` algorithm has a problem: once it finds a bandit with high enough payoff, it rarely switches. In other words, it almost never explores. `Epsilon Greedy` provides a simple fix:
+It should be obvious that the above `Greedy` algorithm has a problem: once it finds a bandit with a *high enough* payoff, it rarely switches. In other words, it almost never explores. `Epsilon Greedy` provides a simple fix:
 
 ```
 for i in [1, 50]:
@@ -91,7 +93,7 @@ loop:
 
 As the pseudocode shows, a random value is drawn when a new visitor has arrived. If the random value is smaller than the threshold `epsilon`, set before the start of the experiment, then a random bandit is picked. Note that this randomly picked bandit can be the same as the one picked by `argmax`. To exclude such case only requires a few more lines of code. However, the benefit of doing so is not obvious.
 
-Let's now move onto the actual implementation of `Epsilon Greedy` in `Python`. Note that there are lines with comment "*only in demonstration*". These are codes to generate the *true* probabilities of different bandits, which you obvious do not know when running a real-world experiment.
+Let's now move onto the actual implementation of `Epsilon Greedy` in `Python`. Note that the script includes lines with the comment "*only in demonstration*". These are codes to generate the *true* probabilities of different bandits, which you obviously do not know when running a real-world experiment.
 
 ```python
 import numpy as np
@@ -209,10 +211,10 @@ class BayesianAB:
     self.b = [1] * number_of_bandits
 ```
 
-The `BayesianAB` class has a default of 2 bandits. We first pre-allocate six lists to store values needed for the algorithms:
+The `BayesianAB` class has a default of 2 bandits. We first pre-allocate 6 lists to store several values:
 * `prob_true` stores the *true* probability of each bandit. These probabilities are to be generated next. In practice, you do not know these true probabilities;
-* `prob_win` stores the *empirical* probability of each bandit. Values in this list are to be updated during each round of the experiment;
-* `history` stores the history of `prob_win` in each trial. This is important for both updating the mean in constant time (see above) and the evaluation of bandit performance;
+* `prob_win` stores the *observed* probability of each bandit. Values in this list are to be updated during each round of the experiment;
+* `history` stores the history of `prob_win` in each trial. This is important for both updating the mean in constant time (see above) and the evaluation of bandit performance afterwards;
 * `count` stores the number of times each bandit was chosen;
 * `a` and `b` are values used in `Thompson Sampling` or `Bayesian Bandit`, the last algorithm to be considered in this article.
 
@@ -226,9 +228,9 @@ The following lines generates the *true* probabilities:
       self.prob_true[i] = round(0.75 - random.uniform(0.05, 0.65), 2)
 ```
 
-The last bandit has the highest win rate, which is .75, and the rest of them are randomized between .1 and .7. An alternative method is to hardcode the probabilities. I used the randomized approach to allow flexibility in specifying the number of bandits using `N_bandits` (or `number_of_bandits` inside the `BayesianAB` class).
+The last bandit has the highest win rate, which is .75, and the rest of them are randomized between .1 and .7. An alternative method is to hardcode the probabilities. I used the randomized approach to allow for flexibility in specifying the number of bandits using `N_bandits` (or `number_of_bandits` inside the `BayesianAB` class).
 
-Next, we define two functions commonly used by all but the `Thompson Sampling` algorithms:
+Next, we define two functions used by several algorithms:
 
 ```python
   # Returns a random value of 0 or 1
@@ -252,9 +254,9 @@ Next, we define two functions commonly used by all but the `Thompson Sampling` a
     self.count[i] += 1
 ```
 
-The first function, `pull()`, returns either True or False depended on if the value of `random.random()` is less than the true probability of bandit $i$. This is unnecessary in practice. Instead, a call to either the `BayesianAB` class or specific method (such as `Epsilon Greedy`) inside `BayesianAB` should be triggered with the arrival of a new visitor, and by the end of the visit, you would know if the visitor has purchased (True) or not (False). In `Python`, `True` is given a numerical value of 1 and `False` a value of 0.
+The first function, `pull()`, returns either True or False depending on if the value of `random.random()` is less than the true probability of bandit $i$. This is unnecessary in practice. Instead, a call to either the `BayesianAB` class or a specific method (such as `Epsilon Greedy`) inside `BayesianAB` should be triggered with the arrival of a new visitor, and by the end of the visit, you would know if the visitor has purchased (True) or not (False). In `Python`, `True` is given a numerical value of 1 and `False` a value of 0.
 
-The `update()` function updates the mean. It also adds the new empirical probabilities to the list `history` and increase the count of bandit $i$ being picked by 1.
+The `update()` function updates the mean. It also adds the updated observed probabilities to the list `history` and increase the count of bandit $i$ being picked by 1.
 
 Here is the actual method inside `BayesianAB` that implements `epsilon greedy`:
 
@@ -287,7 +289,7 @@ Here is the actual method inside `BayesianAB` that implements `epsilon greedy`:
     return self.history
 ```
 
-Basically, it follows the pseudocode. The first `for` loop assigns visitors randomly to the 5 bandits for the first 50 visitors (given by `N_start`). After each assignment, it calls the `update()` function to update the mean. Starting with the 51st visitor (`Python` starts counting at 0), the second `for` loop is triggered and the following steps are followed:
+It basically follows the pseudocode. The first `for` loop assigns visitors randomly to the 5 bandits for the first 50 visitors (given by `N_start`). After each assignment, it calls the `update()` function to update the mean. Starting with the 51st visitor (`Python` starts counting at 0), the second `for` loop is triggered and the following steps are followed:
 1. Find out which bandit ($i$) has the highest expected payoff;
 2. Checks if a random value is smaller than `epsilon` (to be specified when the `epsilon_greedy()` method is called). If this is `True`, then a random bandit ($j$) is selected;
 3. If the randomly selected bandit is the same as the one with the highest expected payoff (i.e., $j=i$), then randomly choose another bandit, until the two are not the same;
@@ -305,7 +307,7 @@ print(f'The observed win rates: {eg.prob_win}')
 print(f'Number of times each bandit was played: {eg.count}')
 ```
 
-Here, we call `epsilon_greedy()` and give a value of 0.5 to `epsilon`. We also print out the true probabilities, the empirical probabilities, and the number of times each bandit was played. Here is the output from a typical run:
+Here, we call `epsilon_greedy()` and give a value of 0.5 to `epsilon`. This means the algorithm will explore half of the time. We also print out the true probabilities, the observed probabilities, and the number of times that each bandit was played. Here is the printed output from a typical run:
 
 ```
 The true win rates: [0.65, 0.13, 0.33, 0.66, 0.75]
@@ -313,9 +315,9 @@ The observed win rates: [0.6487, 0.1411, 0.2035, 0.5903, 0.5989]
 Number of times each bandit was played: [50141, 12596, 12385, 12443, 12435]
 ```
 
-In the above run, the best bandit was NOT the one that got chosen the most. The second best bandit, with win probability of 0.65, was picked about half of the time, as dictated by the value of `epsilon`. This is due to the bandit with a 0.65 win rate did exceptional well among the first 50 visitors, and since it is close enough to the win rate of the best version, random jumps to the version with a 0.75 win rate were not enough to "flip" the results.
+In the above run, the best bandit was NOT the one that got chosen the most. The second best bandit, with a 0.65 win rate, was picked about half of the time, as dictated by the value of `epsilon`. This is due to the bandit with a 0.65 win rate did exceptional well among the first 50 visitors. Since since it is close enough to the win rate of the best version, random jumps to the version with a 0.75 win rate were not enough to "flip" the results.
 
-Also note that the empirical probabilities are not guaranteed to converge to the true probabilities except for the "chosen" one, in this case, the third bandit with a win rate of .65.
+Also note that the observed probabilities have not converged to the true probabilities except for the "chosen" one after 100,000 visitors. However, if the number of visitors approaches infinity, which means the number of times that each version was picked also approaches infinity, all win rates will converge to their true values.
 
 We can visualize the outcome with the following code:
 
@@ -354,13 +356,13 @@ Here is the output from the above run:
 
 ![Epsilon Greedy](eg.png)
 
-Here is the visualization for the first 100 visitors, which shows that the third bandit jumped ahead early:
+Here is the visualization for the first 100 visitors, which shows that the third bandit, the 0.65 win rate, jumped ahead early:
 
 ![Epsilon Greedy (first 100)](eg_100.png)
 
 ## Optimistic Initial Values
 
-While `Epsilon Greedy` focused on "exploit" and can end up choosing the second-best version, `Optimistic Initial Value` puts more focus on "explore" (while staying `greedy`). The name of this algorithm informs you about what it does: at the start of the experiment, each version is set to have a high expected payoff. This ensures that each bandit to be played a fair number of times. As a result, there is no need to set aside 50 visitors to "test the water" in the beginning. If we compare `Epsilon Greedy` to English auction where the values go up over time, `Optimistic Initial Value` is like Dutch auction where the values go *down* over time. Here is the pseudocode:
+The `Initial Optimistic Values` is one of my favorites (the other being `Gradient Bandit`) amongst the algorithms discussed in this article. While `Epsilon Greedy` focused on "exploit" and can end up choosing the second-best version, `Optimistic Initial Value` puts more focus on "explore" initially, while staying `greedy`, i.e., pick the strategy that shows the highest observed expected value. The name of this algorithm informs you about what it does: at the start of the experiment, each version is set to have a high expected payoff, i.e., being "optimistic" about each version. This ensures that each of them is played a fair number of times initially. As a result, there is no need to set aside 50 visitors to "test the water" in the beginning. If we compare `Epsilon Greedy` to English auction where the values go up over time, `Optimistic Initial Value` is like Dutch auction where the values go *down* over time. Here is the pseudocode:
 
 ```
 p_init = 5 # a large value as initial win rate for ALL bandits
@@ -371,7 +373,7 @@ loop:
     bandit[j].update_mane(x)
 ```
 
-Assuming you already have the code from the `Epsilon Greedy` section, simply add the following inside the `BayesianAB` class will include `Optimistic Initial Value`:
+Assuming you already have the code from the `Epsilon Greedy` section, simply adding the following method inside the `BayesianAB` class will include `Optimistic Initial Value`:
 
 ```python
   ####################
@@ -420,9 +422,7 @@ From the visualization below, you can see that the best bandit jumped ahead even
 
 ![Optimistic Initial Values (first 100)](oiv_100.png)
 
-Note that I set `init_val` to 0.99 since we are comparing win rates that cant not exceed 1. Interestingly, while `Initial Optimistic Values` were designed to explore in the beginning, it converged and started to exploit much quicker and much more effectively compared to `Epsilon Greedy` where the rate of exploration is dictated by the value of `epsilon`. Also note that, like `Epsilon Greedy`, the empirical probabilities do not converge to the true probabilities except for the "chosen" one. This is a common feature of all algorithms considered in this article.
-
-The `Initial Optimistic Values` algorithm is my favorite amongst the algorithms considered in this article.
+Note that I set `init_val` to 0.99 since we are comparing win rates that can not exceed 1. The larger the initial value, the more the algorithm explores initially. Because `Initial Optimistic Values` was specifically designed to explore in the beginning, it can "fall behind" in reaching the best version, if ever, compared to other algorithms such as `Epsilon Greedy`. Note that the observed probabilities do not converge to the true probabilities in `Initial Optimistic Values` except for the "chosen" one. This is a common feature of several algorithms discussed in this article.
 
 ## Upper Confidence Bound (UCB)
 
