@@ -315,9 +315,9 @@ The observed win rates: [0.6487, 0.1411, 0.2035, 0.5903, 0.5989]
 Number of times each bandit was played: [50141, 12596, 12385, 12443, 12435]
 ```
 
-In the above run, the best bandit was NOT the one that got chosen the most. The second best bandit, with a 0.65 win rate, was picked about half of the time, as dictated by the value of `epsilon`. This is due to the bandit with a 0.65 win rate did exceptional well among the first 50 visitors. Since since it is close enough to the win rate of the best version, random jumps to the version with a 0.75 win rate were not enough to "flip" the results.
+In the above run, the best bandit was NOT the one that got chosen the most. The second best bandit, with a 0.65 win rate, was picked about half of the time, as dictated by the value of `epsilon`. This is due to the bandit with a 0.65 win rate did exceptional well among the first 50 visitors. Since it is close enough to the win rate of the best version, random jumps to the version with a 0.75 win rate were not enough to "flip" the results.
 
-Also note that the observed probabilities have not converged to the true probabilities except for the "chosen" one after 100,000 visitors. However, if the number of visitors approaches infinity, which means the number of times that each version was picked also approaches infinity, all win rates will converge to their true values.
+Also note that the observed probabilities have not converged to the true probabilities except for the "chosen" one after 100,000 visitors. However, if the number of visitors approaches infinity, which means the number of times that each version was picked also approaches infinity, all win rates will converge to their true values. This means that the best version would eventually overtake the second-best if the experiment runs *long enough*.
 
 We can visualize the outcome with the following code:
 
@@ -356,7 +356,11 @@ Here is the output from the above run:
 
 ![Epsilon Greedy](eg.png)
 
-Here is the visualization for the first 100 visitors, which shows that the third bandit, the 0.65 win rate, jumped ahead early:
+We can also get the visualization for the first 100 visitors, which shows that the third bandit, the 0.65 win rate, jumped ahead early:
+
+```python
+plot_history(history=eg.history, prob_true=eg.prob_true, k=100)
+```
 
 ![Epsilon Greedy (first 100)](eg_100.png)
 
