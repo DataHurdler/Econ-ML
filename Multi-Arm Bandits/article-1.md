@@ -426,11 +426,11 @@ Note that I set `init_val` to 0.99 since we are comparing win rates that can not
 
 ## Upper Confidence Bound (UCB)
 
-The theory of UCB is harder to fully grasp although its intuition and implementation is straightforward. To start, let's look back to the last two algorithms we have discussed, `Epsilon Greedy` and `Optimistic Initial Values`. A common step in the implementation of both of these algorithms is to find the version that gives the best *historical* expected win rate. But can we do better, especially for the fact that we know these expected win rates are probabilistic. Put differently, we know that the more a certain version was chosen, the closer its expected win rate is to its true win rate. But what about those that were rarely picked?
+The theory of `UCB` is harder to fully grasp although its intuition and implementation are straightforward. To start, let's look back to the last two algorithms that we have discussed: `Epsilon Greedy` and `Optimistic Initial Values`. A common step in the implementation of both of these algorithms is to find the version that gives the best *observed* expected win rate. This is why both algorithms are said to be `greedy`. But can we do better, especially for the fact that we know these expected win rates are probabilistic. Put differently, we know that the more a certain version was chosen, the closer its expected win rate is to its true win rate. But what about those that were rarely picked?
 
-That is where `Upper Confidence Bound` comes into play. The idea is that we should not be relying on the historical expected value alone. We should give each version some "bonus points": if a version has been chosen a lot, the bonus is tiny, but if a version has been barely chosen, it should get a large bonus because, probabilistically, the historical expected value *can* be far from the true value if a version has not been picked much.
+That is where `Upper Confidence Bound` comes into play. The idea is that we should not be relying on the observed expected value alone. We should give each version some "bonus points": if a version has been chosen a lot, the bonus is small; but if a version has been barely chosen, it should get a larger bonus because, probabilistically, the observed expected value *can* be far from the true value if a version has not been picked much.
 
-If you are interested in the math, you can read the paper "[Finite-time Analysis of the Multiarmed Bandit Problem](https://homes.di.unimi.it/~cesabian/Pubblicazioni/ml-02.pdf)". In the paper the authors have outlined a function for the "bonus", which is commonly known as `UCB1`:
+If you are interested in the math, you can read the paper "[Finite-time Analysis of the Multiarmed Bandit Problem](https://homes.di.unimi.it/~cesabian/Pubblicazioni/ml-02.pdf)". In the paper, the authors have outlined a function for the "bonus", which is commonly known as `UCB1`:
 $$b=\sqrt{\frac{2\log{N}}{n_j}}$$
 where $N$ is the total number of visitors at the time of computing the bonus, and $n_j$ is the number of times that bandit $j$ was chosen at the time of computing the bonus. Adding $b$ to the expected win rate gives the **upper confidence bound**:
 $$\text{UCB1}=\bar{x}_{n_j}+b$$
@@ -463,12 +463,15 @@ Adding the following method into `BayesianAB` will implement `UCB1`:
       i = np.argmax(bound)
 
       self.update(i, k)
+
+      if bandit_count[i] < 1:
+        bandit_count[i] = 0
       bandit_count[i] += 1
 
     return self.history
 ```
 
-This is very similar to what we had before. One thing to note is that I give a very small initial value ($0.0001$) to `bandit_count` to avoid the division of zero. An alternative approach is that similar to what we did in `Epsilon Greedy`: run the first 50 iterations on all versions before implementing `UCB1` from the 51st onward.
+This is very similar to what we had before. One thing to note is that I give a very small initial value ($0.0001$) to `bandit_count` to avoid the division of zero. Later, I reversed the value to 0 with the `if` statement. An alternative approach is that similar to what we did in `Epsilon Greedy`: run the first 50 iterations on all versions before implementing `UCB1` from the 51st onward.
 
 Executing the following will give us results and visualizations for `UCB1`:
 
@@ -497,11 +500,37 @@ This particular run shows that `UCB1` has failed to identify the best version. E
 
 ![UCB1 (first 100)](ucb1_100.png)
 
+## Gradient Bandit Algorithm
+
+Another algorithm that does not rely *entirely* on expected payoffs is `Gradient Bandit`. In this algorithm, each bandit's probability of being chosen is determined according to a soft-max distribution:
+$$\pi_n(i)=\frac{e^{H_n(i)}}{\sum_{j=1}^{J}{e^{H_n(j)}}}$$
+where $\pi_n(i)$ is the probability of bandit $i$ being picked for customer $n$, $H_n(i)$ is the *preference* for bandit $i$ at the time customer $n$ arrives, and $J$ is the total number of bandits in the experiment. In the case of only two bandits, this specification is the same as the logistic or sigmoid function.
+
+When the first customer arrives, i.e., $n=1$, it is custom to set the *preference*, $H_1(j)$ (for all $j$) to 0 so that every bandit has the same probability of getting picked. Suppose bandit $i$ is picked for customer $n(>1)$, then the *preference* for $i$ is updated according to:
+$$H_{n+1}(i)=H_n(i)+\alpha(x_n - \bar{x}_{n-1})(1-\pi_n(i))$$
+whereas the *preferences* for all $j\neq i$ are updated according to:
+$$H_{n+1}(j)=H_n(j)-\alpha(x_n - \bar{x}_{n-1})\pi_n(j)$$
+where $\alpha>0$ is a "step-size" parameter.
+
+The intuition of the `Gradient Bandit` algorithm is straightforward. When the reward received from picking $i$ for customer $n$ is higher than the *observed* mean, then the probability of picking $i$ in the future is increased. In our simple case with only two outcomes (buy and not buy), the reward is higher than the mean only if customer $n$ buys.
+
+Let's take a look at the pseudocode:
+
+```
+Pseudocode for Gradient Bandit
+```
+
+And here is the `Python` implementation
+
+```
+Python code for Gradient Bandit
+```
+
 ## Thompson Sampling (Bayesian Bandits)
 
-`Thompson Sampling`, or `Bayesian Bandits`, takes another (big) step forward from `UCB`. In our discussion on UCB, we acknowledged the fact that using a single expected value to represent the performance of a version is not accurate. To tackle this, `UCB1` adds a "bonus": the bonus is smaller for the bandits that were played more, and larger for the bandits that were played less.
+`Thompson Sampling`, or `Bayesian Bandits`, takes another (big) step forward. In our discussion on `Upper Confidence Bound`, we acknowledged the fact that using a single expected value to represent the performance of a version is not accurate. To tackle this, `UCB1` adds a "bonus": the bonus is smaller for the bandits that were played more, and larger for the bandits that were played less. Then in our discussion on `Gradient Bandit`, each bandit's chance of being picked is described by a soft-max distribution.
 
-To push this idea further, and as the name `Thompson Sampling` hinted, we may ask if we could construct a probability distribution to describe the expected values of all the versions. As it turns out, this is possible, as everything, including parameters, are considered random variables in Bayesian Statistics. For example, with Normal Distribution, we often speak about fixed values of mean and variance. But in Bayesian Statistics, the mean and variance of a Normal Distribution are two random variables and they can be described by probability distributions.
+To push these ideas further, and as the name `Thompson Sampling` hinted, we may ask if we could construct a probability distribution to describe the expected values of all the versions. As it turns out, this is possible, as everything, including parameters, are considered random variables in Bayesian Statistics. For example, with Normal Distribution, we often speak about fixed values of mean and variance. But in Bayesian Statistics, the mean and variance of a Normal Distribution are two random variables and they can be described by probability distributions.
 
 The mathematical derivation of `Thompson Sampling` requires the use of [conjugate prior](https://en.wikipedia.org/wiki/Conjugate_prior), which I will discuss here briefly.
 
@@ -653,7 +682,7 @@ It is also interesting to look at what happened after only 100 visitors:
 
 Two difference between `Thompson Sampling` and the other algorithms we have discussed should be noted. First, as already mentioned, `Thompson Sampling` attempts to build a distribution for the 5 versions. Comparing the two visuals from 100 visitors and all visitors shows that, although the best version has jumped out early, the distribution is much tighter at the end of the experiment, indicating great "confidence" for the estimated mean. Second, and importantly, the `Thompson Sampling` algorithm has no problem distinguishing between a version with win rate 0.67 and the best version with win rate 0.75.
 
-## The Important Take-aways
+## Summary of the Algorithms
 Under construction...
 
 ## Back to Economics and RCT
