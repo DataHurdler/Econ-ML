@@ -1,5 +1,5 @@
-随机对照试验的贝叶斯方法（2）
-=======================
+随机对照试验的贝叶斯方法（2）：Optimistic Initial Values
+===================================================
 
 **作者：** *罗子俊*
 
@@ -202,7 +202,7 @@ p_init = 5 # a large value as initial win rate for ALL bandits
 loop:
     j = argmax(expected bandit win rates)
     x = Reward (1 or 0) from playing bandit j
-    bandit[j].update_mane(x)
+    bandit[j].update_mean(x)
 ```
 
 如果你已经有了前一节的代码，你可以在`BayesianAB`类中增加一下代码来执行乐观初始值算法：

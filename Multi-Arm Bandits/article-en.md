@@ -63,7 +63,7 @@ for i in [1, 50]:
     choose each bandit randomly
 loop:
     j = argmax(expected bandit win rates)
-    x = Reward (1 or 0) from playing bandit j
+    x = reward (1 or 0) from playing bandit j
     bandit[j].update_mean(x)
 ```
 
@@ -87,7 +87,7 @@ loop:
         j = choose a bandit at random
     else:
         j = argmax(expected bandit win rates)
-    x = Reward (1 or 0) from playing bandit j
+    x = reward (1 or 0) from playing bandit j
     bandit[j].update_mean(x)
 ```
 
@@ -373,7 +373,7 @@ p_init = 5 # a large value as initial win rate for ALL bandits
 
 loop:
     j = argmax(expected bandit win rates)
-    x = T/F from playing bandit j
+    x = reward (1 or 0) from playing bandit j
     bandit[j].update_mane(x)
 ```
 
@@ -444,7 +444,7 @@ Here is the pseudocode for `UCB1`:
 ```
 loop:
     j = argmax(UCB1 values)
-    x = T/F from playing bandit j
+    x = reward (1 or 0) from playing bandit j
     bandit[j].update_mean(x)
 ```
 
@@ -521,10 +521,17 @@ The intuition of the `Gradient Bandit` algorithm is straightforward. When the re
 Let's take a look at the pseudocode:
 
 ```
-Pseudocode for Gradient Bandit
+H = [0] * number_of_bandits
+
+loop:
+  pi = pi(H) # Calculates the soft-max distribution
+  i = random.choices(bandits, weights=pi)
+  H.update()
 ```
 
-And here is the `Python` implementation
+where `H.update()` updates the values of $H(i)$ (the bandit that was chosen) and $H(j)$ (bandits that were not chosen).
+
+Here is the `Python` implementation for `Gradient Bandit`:
 
 ```
 Python code for Gradient Bandit
