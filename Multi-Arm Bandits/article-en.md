@@ -435,14 +435,15 @@ The theory of `UCB` is harder to fully grasp although its intuition and implemen
 That is where `Upper Confidence Bound` comes into play. The idea is that we should not be relying on the observed expected value alone. We should give each version some "bonus points": if a version has been chosen a lot, the bonus is small; but if a version has been barely chosen, it should get a larger bonus because, probabilistically, the observed expected value *can* be far from the true value if a version has not been picked much.
 
 If you are interested in the math, you can read the paper "[Finite-time Analysis of the Multiarmed Bandit Problem](https://homes.di.unimi.it/~cesabian/Pubblicazioni/ml-02.pdf)". In the paper, the authors have outlined a function for the "bonus", which is commonly known as `UCB1`:
-$$b=\sqrt{\frac{2\log{N}}{n_j}}$$
+$$b_j=\sqrt{\frac{2\log{N}}{n_j}}$$
 where $N$ is the total number of visitors at the time of computing the bonus, and $n_j$ is the number of times that bandit $j$ was chosen at the time of computing the bonus. Adding $b$ to the expected win rate gives the **upper confidence bound**:
-$$\text{UCB1}=\bar{x}_{n_j}+b$$
+$$\text{UCB1}_j=\bar{x}_{n_j}+b_j$$
 
 Here is the pseudocode for `UCB1`:
 
 ```
 loop:
+    Update UCB1 values
     j = argmax(UCB1 values)
     x = reward (1 or 0) from playing bandit j
     bandit[j].update_mean(x)
@@ -507,16 +508,22 @@ This particular run shows that `UCB1` has failed to identify the best version. E
 ## Gradient Bandit Algorithm
 
 Another algorithm that does not rely *entirely* on expected payoffs is `Gradient Bandit`. In this algorithm, each bandit's probability of being chosen is determined according to a soft-max distribution:
+
 $$\pi_n(i)=\frac{e^{H_n(i)}}{\sum_{j=1}^{J}{e^{H_n(j)}}}$$
+
 where $\pi_n(i)$ is the probability of bandit $i$ being picked for customer $n$, $H_n(i)$ is the *preference* for bandit $i$ at the time customer $n$ arrives, and $J$ is the total number of bandits in the experiment. In the case of only two bandits, this specification is the same as the logistic or sigmoid function.
 
-When the first customer arrives, i.e., $n=1$, it is custom to set the *preference*, $H_1(j)$ (for all $j$) to 0 so that every bandit has the same probability of getting picked. Suppose bandit $i$ is picked for customer $n(>1)$, then the *preference* for $i$ is updated according to:
+When the first customer arrives, i.e., $n=1$, it is custom to set the *preference*, $H_1(j)$, for all $j$, to 0 so that every bandit has the same probability of getting picked. Suppose bandit $i$ is picked for customer $n(>1)$, then the *preference* for $i$ is updated according to:
+
 $$H_{n+1}(i)=H_n(i)+\alpha(x_n - \bar{x}_{n-1})(1-\pi_n(i))$$
+
 whereas the *preferences* for all $j\neq i$ are updated according to:
+
 $$H_{n+1}(j)=H_n(j)-\alpha(x_n - \bar{x}_{n-1})\pi_n(j)$$
+
 where $\alpha>0$ is a "step-size" parameter.
 
-The intuition of the `Gradient Bandit` algorithm is straightforward. When the reward received from picking $i$ for customer $n$ is higher than the *observed* mean, then the probability of picking $i$ in the future is increased. In our simple case with only two outcomes (buy and not buy), the reward is higher than the mean only if customer $n$ buys.
+The intuition of the `Gradient Bandit` algorithm is as follows. When the reward received from picking $i$ for customer $n$ is higher than the expected reward from past rounds, the probability of picking $i$ in the future is increased. In our simple case with only two outcomes (buy and not buy), the reward is higher than the expected reward only if customer $n$ buys.
 
 Let's take a look at the pseudocode:
 
@@ -533,9 +540,145 @@ where `H.update()` updates the values of $H(i)$ (the bandit that was chosen) and
 
 Here is the `Python` implementation for `Gradient Bandit`:
 
+```python
+  ####################
+  # gradient_bandit update
+  def gb_update(
+      self,
+      i,
+      k,
+      a,
+  ):
+
+    outcome = self.pull(i)
+    for z in range(len(self.pref)):
+      if z == i:
+        self.pref[z] = self.pref[z] + a * (outcome - self.prob_win[z]) * (1- self.pi[z])
+      else:
+        self.pref[z] = self.pref[z] - a * (outcome - self.prob_win[z]) * self.pi[z]
+    
+    self.prob_win[i] = (self.prob_win[i] * k + outcome) / (k+1)
+
+    return self.pref
+
+  # gradient bandit algorithm
+  def gradient_bandit(
+      self,
+      a = 0.2,
+  ) -> list:
+
+    self.history.append([self.pi.copy(),
+                         self.pref.copy(),
+                         self.prob_win.copy()])
+
+    for k in range(1, N):
+      self.pi = np.exp(self.pref) / sum(np.exp(self.pref))
+      pick = random.choices(list(range(len(self.pref))), weights = self.pi)
+      i = pick[0]
+      self.pref = self.gb_update(i, k, a)
+
+      self.count[i] += 1
+      self.history.append([self.pi.copy(),
+                           self.pref.copy(),
+                           self.prob_win.copy()])
+    
+    return self.history
 ```
-Python code for Gradient Bandit
+
+Here are some quick notes on the `Python` implementation of the `gradient bandit` algorithm:
+1. A new function, `gb_update()` is necessary since we need to update the preference function for every bandit in each round. This update function was denoeted as `H.update()` in the pseudocode;
+2. The `gradient_bandit()` function takes 1 parameter: $a$`, which is the step-size parameter. The default value of $a$ is set to be 0.2. The smaller the value of $a$, the more the algorithm explores;
+3. For `gradient bandit`, each row in `history` is a list of 3 lists. In order to examine the performance of `gradient bandit`, we not only save the expected win rates, but also preferences and soft-max distribution, $\pi(i)$;
+4. The function `choices()` from the `random` library picks a value from a list based on `weights`. The weights is given by the soft-max distribution;
+
+Because `gradient_bandit()` saves arrays in `history`, we also need to update the `plot_history()` function:
+
+```python
+def plot_history(
+    history: list,
+    prob_true: list,
+    col = 2,
+    k = N,
+):
+
+  if type(history[0][0]) == list:
+    df_history = pd.DataFrame([arr[col] for arr in history][:k])
+  else:
+    df_history = pd.DataFrame(history[:k])
+
+  plt.figure(figsize=(20,5))
+
+  # Define the color palette
+  colors = sns.color_palette("Set2", len(prob_true))
+
+  for i in range(len(prob_true)):
+    sns.lineplot(x=df_history.index, y=df_history[i], color=colors[i])
+  
+  # Create custom legend using prob_true and colors
+  custom_legend = [plt.Line2D([], [], color=colors[i], label=prob_true[i]) for i in range(len(prob_true))]
+  plt.legend(handles=custom_legend)
 ```
+
+The updates occurred in
+
+```python
+  if type(history[0][0]) == list:
+    df_history = pd.DataFrame([arr[col] for arr in history][:k])
+  else:
+    df_history = pd.DataFrame(history[:k])
+```
+
+which is to accommodate the arrays saved in history by the `gradient bandit` algorithm.
+
+Execute the following will run the `gradient bandit` algorithm:
+
+```python
+# Gradient bandit
+gb = BayesianAB(N_bandits)
+print(f'The true win rates: {gb.prob_true}')
+gb_history = gb.gradient_bandit()
+print(f'The observed win rates: {gb.prob_win}')
+print(f'Number of times each bandit was played: {gb.count}')
+
+# plot the entire experiment history
+plot_history(history=gb.history, prob_true=gb.prob_true)
+```
+Here are results from a typical run:
+
+```
+The true win rates: [0.17, 0.56, 0.17, 0.7, 0.75]
+The observed win rates: [0.2564, 0.5514, 0.0105, 0.6636, 0.7498]
+Number of times each bandit was played: [35, 67, 22, 196, 99679]
+```
+
+![Gradient Bandit](gb.png)
+
+As usual, we can examine what happened after 100 customers. Interestingly, the bandit with the highest win rate did not lead after only 100 customers:
+
+![Gradient Bandit (first 100)](gb_100.png)
+
+We can plot the evolution of the `preference` with the following:
+
+```python
+# plot preference
+plot_history(history=gb.history, prob_true=gb.prob_true, col=1)
+```
+
+![Gradient Bandit (preference)](gb_pref.png)
+
+And plot the soft-max function with the following:
+
+```python
+# plot pi
+plot_history(history=gb.history, prob_true=gb.prob_true, col=0)
+```
+
+![Gradient Bandit (pi)](gb_pi.png)
+
+There are several reasons why the `gradient bandit` algorithm is one of my favorites:
+1. Economists are familiar with the idea of using `preference` to model choice;
+2. Economists are familiar with `logistic` function, which is the special case of `soft-max` with only two bandits;
+3. One of my research areas is conflict and contest, in which the `soft-max` function, known as "contest success function", is widely used in the literature.
 
 ## Thompson Sampling (Bayesian Bandits)
 
@@ -689,14 +832,14 @@ Number of times each bandit was played: [10, 355, 12, 44, 99578]
 
 It is also interesting to look at what happened after only 100 visitors:
 
-![Bayesian Bandits (frist 100)](bb_100.png)
+![Bayesian Bandits (first 100)](bb_100.png)
 
 Two difference between `Thompson Sampling` and the other algorithms we have discussed should be noted. First, as already mentioned, `Thompson Sampling` attempts to build a distribution for the 5 versions. Comparing the two visuals from 100 visitors and all visitors shows that, although the best version has jumped out early, the distribution is much tighter at the end of the experiment, indicating great "confidence" for the estimated mean. Second, and importantly, the `Thompson Sampling` algorithm has no problem distinguishing between a version with win rate 0.67 and the best version with win rate 0.75.
 
 ## Summary of the Algorithms
 Under construction...
 
-## Back to Economics and RCT
+## Back to Economics and RCT (Maybe?)
 Under construction...
 
 ## References (Incomplete)
