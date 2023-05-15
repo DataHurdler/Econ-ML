@@ -37,6 +37,7 @@ loop:
   # upper confidence bound (UCB1)
   def ucb1(
       self,
+      c = 1,
   ) -> list:
 
     self.history.append(self.prob_win.copy())
@@ -44,7 +45,7 @@ loop:
     # bound = [0] * len(self.prob_win)
 
     for k in range(1, N):
-      bound = self.prob_win + np.sqrt(2 * np.log(k) / bandit_count)
+      bound = self.prob_win + c * np.sqrt(2 * np.log(k) / bandit_count)
       # find index of the largest value in bound
       i = np.argmax(bound)
 
@@ -58,6 +59,8 @@ loop:
 ```
 
 为了保证分母不为0，我把`bandit_count`初始值设定为$0.0001$。当一个老虎机被第一次选中后，我在给计数器加1前先把数值换回0。另外一个办法是像Epsilon Greedy那样，把头50个访客随机分配到各个老虎机，然后在第51个再开始用`UCB1`算法。
+
+`UCB1`算法有一个参数$c$。当$c$的值越大，“奖励”更高，算法探索得也就越多。在代码中，$c$的默认值设置为1。
 
 通过执行以下代码，我们可以得到`UCB1`的结果以及相应的可视化：
 

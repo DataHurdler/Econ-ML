@@ -300,10 +300,15 @@ Number of times each bandit was played: [50141, 12596, 12385, 12443, 12435]
 <span class="hljs-keyword">def</span> <span class="hljs-title function_">plot_history</span>(<span class="hljs-params">
     history: <span class="hljs-built_in">list</span>,
     prob_true: <span class="hljs-built_in">list</span>,
+    col = <span class="hljs-number">2</span>,
     k = N,
 </span>):
 
-  df_history = pd.DataFrame(history[:k])
+  <span class="hljs-keyword">if</span> <span class="hljs-built_in">type</span>(history[<span class="hljs-number">0</span>][<span class="hljs-number">0</span>]) == <span class="hljs-built_in">list</span>: <span class="hljs-comment"># to accommodate gradient bandit</span>
+    df_history = pd.DataFrame([arr[col] <span class="hljs-keyword">for</span> arr <span class="hljs-keyword">in</span> history][:k])
+  <span class="hljs-keyword">else</span>:
+    df_history = pd.DataFrame(history[:k])
+
   plt.figure(figsize=(<span class="hljs-number">20</span>,<span class="hljs-number">5</span>))
 
   <span class="hljs-comment"># Define the color palette</span>
@@ -371,7 +376,7 @@ Number of times each bandit was played: [2, 168, 285, 65, 99479]
 <p dir="auto"><img src="oiv.png" alt="Optimistic Initial Values" data-src="oiv.png"></p>
 <p dir="auto">From the visualization below, you can see that the best bandit jumped ahead even after just 100 visitors:</p>
 <p dir="auto"><img src="oiv_100.png" alt="Optimistic Initial Values (first 100)" data-src="oiv_100.png"></p>
-<p dir="auto">Note that I set <code>init_val</code> to 0.99 since we are comparing win rates that can not exceed 1. The larger the initial value, the more the algorithm explores initially. Because <code>Initial Optimistic Values</code> was specifically designed to explore in the beginning, it can &quot;fall behind&quot; in reaching the best version, if ever, compared to other algorithms such as <code>Epsilon Greedy</code>. Note that the observed probabilities do not converge to the true probabilities in <code>Initial Optimistic Values</code> except for the &quot;chosen&quot; one. This is a common feature of several algorithms discussed in this article.</p>
+<p dir="auto">Note that I set <code>init_val</code> to 0.99 since we are comparing win rates that can not exceed 1. The larger the initial value, the more the algorithm explores initially. Because <code>Initial Optimistic Values</code> was specifically designed to explore in the beginning, it can &quot;fall behind&quot; in reaching the best version, if ever, compared to other algorithms such as <code>Epsilon Greedy</code>. Note that if the best bandit is discovered early, the observed probabilities of other bandits do not converge to the true probabilities in <code>Initial Optimistic Values</code> (but would in <code>epsilon greedy</code>). This is a common feature of several algorithms discussed in this article.</p>
 <h2 dir="auto" id="upper-confidence-bound-ucb">Upper Confidence Bound (UCB)</h2>
 <p dir="auto">The theory of <code>UCB</code> is harder to fully grasp although its intuition and implementation are straightforward. To start, let's look back to the last two algorithms that we have discussed: <code>Epsilon Greedy</code> and <code>Optimistic Initial Values</code>. A common step in the implementation of both of these algorithms is to find the version that gives the best <em>observed</em> expected win rate. This is why both algorithms are said to be <code>greedy</code>. But can we do better, especially for the fact that we know these expected win rates are probabilistic. Put differently, we know that the more a certain version was chosen, the closer its expected win rate is to its true win rate. But what about those that were rarely picked?</p>
 <p dir="auto">That is where <code>Upper Confidence Bound</code> comes into play. The idea is that we should not be relying on the observed expected value alone. We should give each version some &quot;bonus points&quot;: if a version has been chosen a lot, the bonus is small; but if a version has been barely chosen, it should get a larger bonus because, probabilistically, the observed expected value <em>can</em> be far from the true value if a version has not been picked much.</p>
@@ -398,6 +403,7 @@ s76,-153,76,-153s77,-151,77,-151c0.7,0.7,35.7,202,105,604c67.3,400.7,102,602.7,1
   <span class="hljs-comment"># upper confidence bound (UCB1)</span>
   <span class="hljs-keyword">def</span> <span class="hljs-title function_">ucb1</span>(<span class="hljs-params">
       self,
+      c = <span class="hljs-number">1</span>,
   </span>) -&gt; <span class="hljs-built_in">list</span>:
 
     self.history.append(self.prob_win.copy())
@@ -405,7 +411,7 @@ s76,-153,76,-153s77,-151,77,-151c0.7,0.7,35.7,202,105,604c67.3,400.7,102,602.7,1
     <span class="hljs-comment"># bound = [0] * len(self.prob_win)</span>
 
     <span class="hljs-keyword">for</span> k <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(<span class="hljs-number">1</span>, N):
-      bound = self.prob_win + np.sqrt(<span class="hljs-number">2</span> * np.log(k) / bandit_count)
+      bound = self.prob_win + c * np.sqrt(<span class="hljs-number">2</span> * np.log(k) / bandit_count)
       <span class="hljs-comment"># find index of the largest value in bound</span>
       i = np.argmax(bound)
 
@@ -418,6 +424,7 @@ s76,-153,76,-153s77,-151,77,-151c0.7,0.7,35.7,202,105,604c67.3,400.7,102,602.7,1
     <span class="hljs-keyword">return</span> self.history
 </div></code></pre>
 <p dir="auto">This is very similar to what we had before. One thing to note is that I give a very small initial value (<eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0.0001</mn></mrow><annotation encoding="application/x-tex">0.0001</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.64444em;vertical-align:0em;"></span><span class="mord">0.0001</span></span></span></span></eq>) to <code>bandit_count</code> to avoid the division of zero. Later, I reversed the value to 0 with the <code>if</code> statement. An alternative approach is that similar to what we did in <code>Epsilon Greedy</code>: run the first 50 iterations on all versions before implementing <code>UCB1</code> from the 51st onward.</p>
+<p dir="auto"><code>UCB1</code> has a parameter <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>c</mi></mrow><annotation encoding="application/x-tex">c</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.43056em;vertical-align:0em;"></span><span class="mord mathnormal">c</span></span></span></span></eq>, which controls the degree of exploration. A greater value <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>c</mi></mrow><annotation encoding="application/x-tex">c</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.43056em;vertical-align:0em;"></span><span class="mord mathnormal">c</span></span></span></span></eq> means a higher reward. The default value is set to 1.</p>
 <p dir="auto">Executing the following will give us results and visualizations for <code>UCB1</code>:</p>
 <pre><code class="code-line language-python" dir="auto"><div>ucb = BayesianAB(N_bandits)
 <span class="hljs-built_in">print</span>(<span class="hljs-string">f&#x27;The true win rates: <span class="hljs-subst">{ucb.prob_true}</span>&#x27;</span>)
@@ -514,7 +521,7 @@ loop:
     k = N,
 </span>):
 
-  <span class="hljs-keyword">if</span> <span class="hljs-built_in">type</span>(history[<span class="hljs-number">0</span>][<span class="hljs-number">0</span>]) == <span class="hljs-built_in">list</span>:
+  <span class="hljs-keyword">if</span> <span class="hljs-built_in">type</span>(history[<span class="hljs-number">0</span>][<span class="hljs-number">0</span>]) == <span class="hljs-built_in">list</span>: <span class="hljs-comment"># to accommodate gradient bandit</span>
     df_history = pd.DataFrame([arr[col] <span class="hljs-keyword">for</span> arr <span class="hljs-keyword">in</span> history][:k])
   <span class="hljs-keyword">else</span>:
     df_history = pd.DataFrame(history[:k])
@@ -710,6 +717,8 @@ Number of times each bandit was played: [10, 355, 12, 44, 99578]
 <h2 dir="auto" id="back-to-economics-and-rct-maybe">Back to Economics and RCT (Maybe?)</h2>
 <p dir="auto">Under construction...</p>
 <h2 dir="auto" id="references-incomplete">References (Incomplete)</h2>
+<p dir="auto"><a href="https://www.udemy.com/course/bayesian-machine-learning-in-python-ab-testing/">https://www.udemy.com/course/bayesian-machine-learning-in-python-ab-testing/</a></p>
+<p dir="auto"><a href="http://incompleteideas.net/book/the-book-2nd.html">http://incompleteideas.net/book/the-book-2nd.html</a> (Chapter 2)</p>
 <p dir="auto"><a href="https://en.m.wikipedia.org/wiki/Multi-armed_bandit">https://en.m.wikipedia.org/wiki/Multi-armed_bandit</a></p>
 <p dir="auto"><a href="https://www.tensorflow.org/agents/tutorials/intro_bandit">https://www.tensorflow.org/agents/tutorials/intro_bandit</a></p>
 <p dir="auto"><a href="https://www.optimizely.com/optimization-glossary/multi-armed-bandit/">https://www.optimizely.com/optimization-glossary/multi-armed-bandit/</a></p>

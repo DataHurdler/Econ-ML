@@ -329,10 +329,15 @@ import seaborn as sns
 def plot_history(
     history: list,
     prob_true: list,
+    col = 2,
     k = N,
 ):
 
-  df_history = pd.DataFrame(history[:k])
+  if type(history[0][0]) == list: # to accommodate gradient bandit
+    df_history = pd.DataFrame([arr[col] for arr in history][:k])
+  else:
+    df_history = pd.DataFrame(history[:k])
+
   plt.figure(figsize=(20,5))
 
   # Define the color palette
@@ -426,7 +431,7 @@ From the visualization below, you can see that the best bandit jumped ahead even
 
 ![Optimistic Initial Values (first 100)](oiv_100.png)
 
-Note that I set `init_val` to 0.99 since we are comparing win rates that can not exceed 1. The larger the initial value, the more the algorithm explores initially. Because `Initial Optimistic Values` was specifically designed to explore in the beginning, it can "fall behind" in reaching the best version, if ever, compared to other algorithms such as `Epsilon Greedy`. Note that the observed probabilities do not converge to the true probabilities in `Initial Optimistic Values` except for the "chosen" one. This is a common feature of several algorithms discussed in this article.
+Note that I set `init_val` to 0.99 since we are comparing win rates that can not exceed 1. The larger the initial value, the more the algorithm explores initially. Because `Initial Optimistic Values` was specifically designed to explore in the beginning, it can "fall behind" in reaching the best version, if ever, compared to other algorithms such as `Epsilon Greedy`. Note that if the best bandit is discovered early, the observed probabilities of other bandits do not converge to the true probabilities in `Initial Optimistic Values` (but would in `epsilon greedy`). This is a common feature of several algorithms discussed in this article.
 
 ## Upper Confidence Bound (UCB)
 
@@ -456,6 +461,7 @@ Adding the following method into `BayesianAB` will implement `UCB1`:
   # upper confidence bound (UCB1)
   def ucb1(
       self,
+      c = 1,
   ) -> list:
 
     self.history.append(self.prob_win.copy())
@@ -463,7 +469,7 @@ Adding the following method into `BayesianAB` will implement `UCB1`:
     # bound = [0] * len(self.prob_win)
 
     for k in range(1, N):
-      bound = self.prob_win + np.sqrt(2 * np.log(k) / bandit_count)
+      bound = self.prob_win + c * np.sqrt(2 * np.log(k) / bandit_count)
       # find index of the largest value in bound
       i = np.argmax(bound)
 
@@ -477,6 +483,8 @@ Adding the following method into `BayesianAB` will implement `UCB1`:
 ```
 
 This is very similar to what we had before. One thing to note is that I give a very small initial value ($0.0001$) to `bandit_count` to avoid the division of zero. Later, I reversed the value to 0 with the `if` statement. An alternative approach is that similar to what we did in `Epsilon Greedy`: run the first 50 iterations on all versions before implementing `UCB1` from the 51st onward.
+
+`UCB1` has a parameter $c$, which controls the degree of exploration. A greater value $c$ means a higher reward. The default value is set to 1.
 
 Executing the following will give us results and visualizations for `UCB1`:
 
@@ -601,7 +609,7 @@ def plot_history(
     k = N,
 ):
 
-  if type(history[0][0]) == list:
+  if type(history[0][0]) == list: # to accommodate gradient bandit
     df_history = pd.DataFrame([arr[col] for arr in history][:k])
   else:
     df_history = pd.DataFrame(history[:k])
@@ -843,6 +851,10 @@ Under construction...
 Under construction...
 
 ## References (Incomplete)
+
+https://www.udemy.com/course/bayesian-machine-learning-in-python-ab-testing/
+
+http://incompleteideas.net/book/the-book-2nd.html (Chapter 2)
 
 https://en.m.wikipedia.org/wiki/Multi-armed_bandit
 
