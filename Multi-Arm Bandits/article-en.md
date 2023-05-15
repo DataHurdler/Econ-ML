@@ -431,7 +431,7 @@ From the visualization below, you can see that the best bandit jumped ahead even
 
 ![Optimistic Initial Values (first 100)](oiv_100.png)
 
-Note that I set `init_val` to 0.99 since we are comparing win rates that can not exceed 1. The larger the initial value, the more the algorithm explores initially. Because `Initial Optimistic Values` was specifically designed to explore in the beginning, it can "fall behind" in reaching the best version, if ever, compared to other algorithms such as `Epsilon Greedy`. Note that if the best bandit is discovered early, the observed probabilities of other bandits do not converge to the true probabilities in `Initial Optimistic Values` (but would in `epsilon greedy`). This is a common feature of several algorithms discussed in this article.
+Note that I set `init_val` to 0.99 since we are comparing win rates that can not exceed 1. The larger the initial value, the more the algorithm explores initially. Because `Optimistic Initial Values` was specifically designed to explore in the beginning, it can "fall behind" in reaching the best version, if ever, compared to other algorithms such as `Epsilon Greedy`. Note that if the best bandit is discovered early, the observed probabilities of other bandits do not converge to the true probabilities in `Optimistic Initial Values` (but would in `epsilon greedy`). This is a common feature of several algorithms discussed in this article.
 
 ## Upper Confidence Bound (UCB)
 
