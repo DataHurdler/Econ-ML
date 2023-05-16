@@ -855,7 +855,7 @@ It is also interesting to look at what happened after only 100 visitors:
 
 ![Bayesian Bandits (first 100)](bb_100.png)
 
-Two difference between `Thompson Sampling` and the other algorithms we have discussed should be noted. First, as already mentioned, `Thompson Sampling` attempts to build a distribution for the bandits. Comparing the two visuals from 100 visitors and all visitors shows that, although the best version has jumped out early, the distribution is much tighter/narrower at the end of the experiment, indicating greater "confidence" for the estimated expected win rate. Second, and importantly, the `Thompson Sampling` algorithm has no problem distinguishing between a bandit with a 0.67 win rate and the best version with a win rate of 0.75.
+Two differences between `Thompson Sampling` and the other algorithms we have discussed should be noted. First, as already mentioned, `Thompson Sampling` attempts to build a distribution for the bandits. Comparing the two visuals from 100 visitors and all visitors shows that, although the best version has jumped out early, the distribution is much tighter/narrower at the end of the experiment, indicating greater "confidence" for the estimated expected win rate. Second, and importantly, the `Thompson Sampling` algorithm has no problem distinguishing between a bandit with a 0.67 win rate and the best version with a win rate of 0.75.
 
 ## Summary of the Algorithms
 Under construction...
