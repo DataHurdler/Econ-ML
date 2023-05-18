@@ -13,8 +13,9 @@ import random
 import matplotlib.pyplot as plt
 import seaborn as sns
 import warnings
-from scipy.stats import beta
 from tqdm import tqdm
+from multiprocessing import Pool, cpu_count
+from functools import partial
 
 # set the number of bandits
 N_bandits = 5
@@ -239,49 +240,9 @@ class BayesianAB:
         return self.history_bandit
 
 
-# This cell defines functions to plot history. Do not change this cell.
-
-def plot_history(
-        history: list,
-        prob_true: list,
-        col=2,
-        k=N,
-):
-    if type(history[0][0]) == list:  # to accommodate gradient bandit
-        df_history = pd.DataFrame([arr[col] for arr in history][:k])
-    else:
-        df_history = pd.DataFrame(history[:k])
-
-    plt.figure(figsize=(20, 5))
-
-    # Define the color palette
-    colors = sns.color_palette("Set2", len(prob_true))
-
-    for i in range(len(prob_true)):
-        sns.lineplot(x=df_history.index, y=df_history[i], color=colors[i])
-
-    # Create custom legend using prob_true and colors
-    custom_legend = [plt.Line2D([], [], color=colors[i], label=prob_true[i]) for i in range(len(prob_true))]
-    plt.legend(handles=custom_legend)
-
-
-def bb_plot_history(
-        history: list,
-        prob_true: list,
-        k=-1,
-):
-    x = np.linspace(0, 1, 100)
-    legend_str = [[]] * len(prob_true)
-    plt.figure(figsize=(20, 5))
-
-    for i in range(len(prob_true)):
-        a = history[0][k][i]
-        b = history[1][k][i]
-        y = beta.pdf(x, a, b)
-        legend_str[i] = f'{prob_true[i]}, alpha: {a}, beta: {b}'
-        plt.plot(x, y)
-
-    plt.legend(legend_str)
+def worker(algo, N_bandits, p_max, p_diff, p_min, n):
+    BayesianAB_instance = BayesianAB(N_bandits, p_max, p_diff, p_min)
+    return getattr(BayesianAB_instance, algo)()
 
 
 def monte_carlo(
@@ -293,11 +254,13 @@ def monte_carlo(
 ):
     algos_hist = {algo: [] for algo in algos}
 
-    for i in range(len(algos)):
-        print(f'Running {algos[i]}...')
-        for j in tqdm(range(n)):
-            BayesianAB_instance = BayesianAB(N_bandits, p_max, p_diff, p_min)
-            algos_hist[algos[i]].append(getattr(BayesianAB_instance, algos[i])())
+    for algo in algos:
+        print(f'Running {algo}...')
+        with Pool(cpu_count()) as pool:
+            func = partial(worker, algo, N_bandits, p_max, p_diff, p_min)
+            results = list(tqdm(pool.imap(func, range(n))))
+
+        algos_hist[algo] = results
 
     return algos_hist
 
@@ -313,10 +276,10 @@ def run_monte_carlo(
     for i in range(len(p_values)):
         print(f'The p_values are {p_values[i]}')
         trials[f'p{i}'] = monte_carlo(algos,
-                             M,
-                             p_values[i][0],
-                             p_values[i][1],
-                             p_values[i][2], )
+                                      M,
+                                      p_values[i][0],
+                                      p_values[i][1],
+                                      p_values[i][2],)
 
     for i in range(len(p_values)):
         df = pd.DataFrame()
@@ -372,10 +335,6 @@ def plot_monte_carlo(
 
 if __name__ == "__main__":
     algos = ['epsilon_greedy', 'optim_init_val', 'ucb1', 'gradient_bandit', 'bayesian_bandits']
-    # algos = ['epsilon_greedy']
-    # p_values = [
-    #     [.75, .01, .1],
-    # ]
     p_values = [
         [.35, .1, .1],
         [.35, .05, .1],
