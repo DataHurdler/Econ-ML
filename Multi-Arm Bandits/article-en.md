@@ -786,9 +786,9 @@ from scipy.stats import beta
       
       i = np.argmax(sample_max)
 
-      self.a, self.b = self.bb_update(self.a, self.b, i)
-      a_hist.append(self.a.copy())
-      b_hist.append(self.b.copy())
+      self.alpha, self.beta = self.bb_update(self.alpha, self.beta, i)
+      a_hist.append(self.alpha.copy())
+      b_hist.append(self.beta.copy())
       
     self.history = [a_hist, b_hist]
     return self.history
