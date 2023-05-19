@@ -276,76 +276,77 @@ def bb_plot_history(
     plt.legend(legend_str)
 
 
-# epsilon greedy
-eg = BayesianAB(N_bandits)
-print(f'The true win rates: {eg.prob_true}')
-eg_history = eg.epsilon_greedy(epsilon=0.5)
-print(f'The observed win rates: {eg.prob_win}')
-print(f'Number of times each bandit was played: {eg.count}')
+if __name__ == "__main__":
+    # epsilon greedy
+    eg = BayesianAB(N_bandits)
+    print(f'The true win rates: {eg.prob_true}')
+    eg_history = eg.epsilon_greedy(epsilon=0.5)
+    print(f'The observed win rates: {eg.prob_win}')
+    print(f'Number of times each bandit was played: {eg.count}')
 
-# plot the entire experiment history
-plot_history(history=eg.history, prob_true=eg.prob_true)
+    # plot the entire experiment history
+    plot_history(history=eg.history, prob_true=eg.prob_true)
 
-# plot history of epsilon greedy after 100 pulls
-plot_history(history=eg.history, prob_true=eg.prob_true, k=100)
+    # plot history of epsilon greedy after 100 pulls
+    plot_history(history=eg.history, prob_true=eg.prob_true, k=100)
 
-# optimistic initial values
-oiv = BayesianAB(N_bandits)
-print(f'The true win rates: {oiv.prob_true}')
-oiv_history = oiv.optim_init_val(init_val=0.99)
-print(f'The observed win rates: {oiv.prob_win}')
-print(f'Number of times each bandit was played: {oiv.count}')
+    # optimistic initial values
+    oiv = BayesianAB(N_bandits)
+    print(f'The true win rates: {oiv.prob_true}')
+    oiv_history = oiv.optim_init_val(init_val=0.99)
+    print(f'The observed win rates: {oiv.prob_win}')
+    print(f'Number of times each bandit was played: {oiv.count}')
 
-# plot the entire experiment history
-plot_history(history=oiv.history, prob_true=oiv.prob_true)
+    # plot the entire experiment history
+    plot_history(history=oiv.history, prob_true=oiv.prob_true)
 
-# plot history of optimistic initial values after 100 pulls
-plot_history(history=oiv.history, prob_true=oiv.prob_true, k=100)
+    # plot history of optimistic initial values after 100 pulls
+    plot_history(history=oiv.history, prob_true=oiv.prob_true, k=100)
 
-# Upper Confidence Bound (UCB1)
-ucb = BayesianAB(N_bandits)
-print(f'The true win rates: {ucb.prob_true}')
-ucb_history = ucb.ucb1()
-print(f'The observed win rates: {ucb.prob_win}')
-print(f'Number of times each bandit was played: {ucb.count}')
+    # Upper Confidence Bound (UCB1)
+    ucb = BayesianAB(N_bandits)
+    print(f'The true win rates: {ucb.prob_true}')
+    ucb_history = ucb.ucb1()
+    print(f'The observed win rates: {ucb.prob_win}')
+    print(f'Number of times each bandit was played: {ucb.count}')
 
-# plot the entire experiment history
-plot_history(history=ucb.history, prob_true=ucb.prob_true)
+    # plot the entire experiment history
+    plot_history(history=ucb.history, prob_true=ucb.prob_true)
 
-# plot history of UCB1 after 100 pulls
-plot_history(history=ucb.history, prob_true=ucb.prob_true, k=100)
+    # plot history of UCB1 after 100 pulls
+    plot_history(history=ucb.history, prob_true=ucb.prob_true, k=100)
 
-# Gradient bandit
-gb = BayesianAB(N_bandits)
-print(f'The true win rates: {gb.prob_true}')
-gb_history = gb.gradient_bandit()
-print(f'The observed win rates: {gb.prob_win}')
-print(f'Number of times each bandit was played: {gb.count}')
+    # Gradient bandit
+    gb = BayesianAB(N_bandits)
+    print(f'The true win rates: {gb.prob_true}')
+    gb_history = gb.gradient_bandit()
+    print(f'The observed win rates: {gb.prob_win}')
+    print(f'Number of times each bandit was played: {gb.count}')
 
-# plot the entire experiment history
-plot_history(history=gb.history, prob_true=gb.prob_true)
+    # plot the entire experiment history
+    plot_history(history=gb.history, prob_true=gb.prob_true)
 
-# plot history of gradient bandit after 100 pulls
-plot_history(history=gb.history, prob_true=gb.prob_true, k=100)
+    # plot history of gradient bandit after 100 pulls
+    plot_history(history=gb.history, prob_true=gb.prob_true, k=100)
 
-# plot preference
-plot_history(history=gb.history, prob_true=gb.prob_true, col=1)
+    # plot preference
+    plot_history(history=gb.history, prob_true=gb.prob_true, col=1)
 
-# plot pi
-plot_history(history=gb.history, prob_true=gb.prob_true, col=0)
+    # plot pi
+    plot_history(history=gb.history, prob_true=gb.prob_true, col=0)
 
-# Bayesian bandits
-bb = BayesianAB(N_bandits)
-print(f'The true win rates: {bb.prob_true}')
-bb_history = bb.bayesian_bandits(sample_size=10)
-print(f'The observed win rates: {np.divide(bb.history[0][-1], bb.count)}')
-print(f'Number of times each bandit was played: {bb.count}')
+    # Bayesian bandits
+    bb = BayesianAB(N_bandits)
+    print(f'The true win rates: {bb.prob_true}')
+    bb_history = bb.bayesian_bandits(sample_size=10)
+    print(f'The observed win rates: {np.divide(bb.history[0][-1], bb.count)}')
+    print(f'Number of times each bandit was played: {bb.count}')
 
-# plot the entire experiment history
-bb_plot_history(history=bb.history, prob_true=bb.prob_true)
+    # plot the entire experiment history
+    bb_plot_history(history=bb.history, prob_true=bb.prob_true)
 
-# plot history of Bayesian bandits after 100 pulls
-bb_plot_history(history=bb.history, prob_true=bb.prob_true, k=100)
+    # plot history of Bayesian bandits after 100 pulls
+    bb_plot_history(history=bb.history, prob_true=bb.prob_true, k=100)
 
-# plot history of Bayesian bandits after 800 pulls
-bb_plot_history(history=bb.history, prob_true=bb.prob_true, k=800)
+    # plot history of Bayesian bandits after 800 pulls
+    bb_plot_history(history=bb.history, prob_true=bb.prob_true, k=800)
