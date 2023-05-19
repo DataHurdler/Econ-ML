@@ -649,21 +649,21 @@ plot_history(history=gb.history, prob_true=gb.prob_true, col=<span class="hljs-n
   </span>) -&gt; <span class="hljs-built_in">list</span>:
 
     a_hist, b_hist = [], []
-    a_hist.append(self.a.copy())
-    b_hist.append(self.b.copy())
+    a_hist.append(self.alpha.copy())
+    b_hist.append(self.beta.copy())
 
     <span class="hljs-keyword">for</span> k <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(<span class="hljs-number">1</span>, N):
       sample_max = []
 
       <span class="hljs-keyword">for</span> m <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(<span class="hljs-built_in">len</span>(self.prob_true)):
-        m_max = np.<span class="hljs-built_in">max</span>(self.bb_sample(self.a[m], self.b[m], sample_size))
+        m_max = np.<span class="hljs-built_in">max</span>(self.bb_sample(self.alpha[m], self.beta[m], sample_size))
         sample_max.append(m_max.copy())
       
       i = np.argmax(sample_max)
 
-      self.a, self.b = self.bb_update(self.a, self.b, i)
-      a_hist.append(self.a.copy())
-      b_hist.append(self.b.copy())
+      self.alpha, self.beta = self.bb_update(self.alpha, self.beta, i)
+      a_hist.append(self.alpha.copy())
+      b_hist.append(self.beta.copy())
       
     self.history = [a_hist, b_hist]
     <span class="hljs-keyword">return</span> self.history

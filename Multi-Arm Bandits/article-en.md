@@ -774,14 +774,14 @@ from scipy.stats import beta
   ) -> list:
 
     a_hist, b_hist = [], []
-    a_hist.append(self.a.copy())
-    b_hist.append(self.b.copy())
+    a_hist.append(self.alpha.copy())
+    b_hist.append(self.beta.copy())
 
     for k in range(1, N):
       sample_max = []
 
       for m in range(len(self.prob_true)):
-        m_max = np.max(self.bb_sample(self.a[m], self.b[m], sample_size))
+        m_max = np.max(self.bb_sample(self.alpha[m], self.beta[m], sample_size))
         sample_max.append(m_max.copy())
       
       i = np.argmax(sample_max)

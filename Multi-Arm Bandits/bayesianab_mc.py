@@ -4,7 +4,6 @@ import random
 import matplotlib.pyplot as plt
 import seaborn as sns
 import warnings
-from tqdm import tqdm
 from multiprocessing import Pool, cpu_count
 from functools import partial
 
@@ -249,7 +248,7 @@ def monte_carlo(
         print(f'Running {algo}...')
         with Pool(cpu_count()) as pool:
             func = partial(worker, algo, N_bandits, p_max, p_diff, p_min)
-            results = list(tqdm(pool.imap(func, range(n))))
+            results = list(pool.imap(func, range(n)))
 
         algos_hist[algo] = results
 
