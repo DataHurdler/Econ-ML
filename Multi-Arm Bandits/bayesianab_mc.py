@@ -108,7 +108,7 @@ def plot_monte_carlo(
     # Adjust the spacing between subplots
     plt.tight_layout()
 
-    plt.savefig("comparison.png", dpi=600)
+    plt.savefig("comparison.png", dpi=300)
     # plt.show()
 
 
