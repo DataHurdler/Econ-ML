@@ -12,7 +12,7 @@ N_bandits = 5
 # set the number of visitors
 N = 10001
 # set the number of trials
-M = 1000
+M = 2000
 
 
 def worker(algo, N_bandits, N, p_max, p_diff, p_min, n):
@@ -109,25 +109,16 @@ def plot_monte_carlo(
     plt.tight_layout()
 
     plt.savefig("comparison.png", dpi=600)
-    plt.show()
+    # plt.show()
 
 
 if __name__ == "__main__":
     algos = ['epsilon_greedy', 'optim_init_val', 'ucb1', 'gradient_bandit', 'bayesian_bandits']
-    p_values = [
-        [.35, .1, .1],
-        [.35, .05, .1],
-        [.35, .01, .1],
-        [.75, .1, .1],
-        [.75, .05, .1],
-        [.75, .01, .1],
-        [.75, .1, .62],
-        [.75, .05, .62],
-        [.75, .01, .62],
-        [.95, .1, .82],
-        [.95, .05, .82],
-        [.95, .01, .82],
-    ]
+    p_values = [[.35, .1, .1], [.35, .05, .1], [.35, .01, .1],
+                [.75, .1, .1], [.75, .05, .1], [.75, .01, .1],
+                [.75, .1, .62], [.75, .05, .62], [.75, .01, .62],
+                [.95, .1, .82], [.95, .05, .82], [.95, .01, .82],
+                ]
 
     df_all = run_monte_carlo(algos, M, N, p_values)
 

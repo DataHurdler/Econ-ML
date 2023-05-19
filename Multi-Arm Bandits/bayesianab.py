@@ -14,8 +14,6 @@ N = 100000
 N_start = 50
 
 
-# This cell defines the basic Python class. Do not change this cell.
-
 class BayesianAB:
     def __init__(
             self,
