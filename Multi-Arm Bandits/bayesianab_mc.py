@@ -23,8 +23,8 @@ def worker(algo, N_bandits, N, p_max, p_diff, p_min, n):
 
 def monte_carlo(
         algos,
-        n=500,
-        N=10001,
+        m=500,
+        n=10001,
         p_max: float = .75,
         p_diff: float = .05,
         p_min: float = .1
@@ -34,8 +34,8 @@ def monte_carlo(
     for algo in algos:
         print(f'Running {algo}...')
         with Pool(cpu_count()) as pool:
-            func = partial(worker, algo, N_bandits, N, p_max, p_diff, p_min)
-            results = list(pool.imap(func, range(n)))
+            func = partial(worker, algo, N_bandits, n, p_max, p_diff, p_min)
+            results = list(pool.imap(func, range(m)))
 
         algos_hist[algo] = results
 

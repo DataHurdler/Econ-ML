@@ -858,19 +858,201 @@ It is also interesting to look at what happened after only 100 visitors:
 Two differences between `Thompson Sampling` and the other algorithms we have discussed should be noted. First, as already mentioned, `Thompson Sampling` attempts to build a distribution for the bandits. Comparing the two visuals from 100 visitors and all visitors shows that, although the best version has jumped out early, the distribution is much tighter/narrower at the end of the experiment, indicating greater "confidence" for the estimated expected win rate. Second, and importantly, the `Thompson Sampling` algorithm has no problem distinguishing between a bandit with a 0.67 win rate and the best version with a win rate of 0.75.
 
 ## Comparing the Algorithms
-Under construction...
+
+It is important to compare the five algorithms in different settings. Following Sutton and Barto (2020), I conduct a 5-armed testbed. The testbed involve many runs, say 2,000. It then calculates the proportion of the bandit with the highest win rate was picked in each round. To implement the testbest, I first revise the `BayesianAB()` class to allow for the number of visitors, $N$, as an input. Then I add a list when `BayesianAB` is initialized to store the chosen bandit in each round:
+
+```python
+self.history_bandit = [] 
+```
+
+Then in the following functions/methods:
+* `update()`
+* `gradient_bandit()`
+* `bayesian_bandits()`
+
+I added the line
+
+```python
+self.history_bandit.append(i)
+```
+
+toward the end. With these changes, the algorithms now also records and saves the chosen bandit in each round (or for each visitor). Lastly, I also add three parameters, `p_max`, `p_diff`, and `p_min`, so that the `BayesianAB()` class can generate different win rates. Once these steps are done, I write a new script to run the testbed:
+
+```python
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from multiprocessing import Pool, cpu_count
+from functools import partial
+
+from bayesianab import BayesianAB
+
+# set the number of bandits
+N_bandits = 5
+# set the number of visitors
+N = 10001
+# set the number of trials
+M = 2000
+
+
+def worker(algo, N_bandits, N, p_max, p_diff, p_min, n):
+    bayesianab_instance = BayesianAB(N_bandits, N, p_max, p_diff, p_min)
+    getattr(bayesianab_instance, algo)()
+    return bayesianab_instance.history_bandit
+
+
+def monte_carlo(
+        algos,
+        m=500,
+        n=10001,
+        p_max: float = .75,
+        p_diff: float = .05,
+        p_min: float = .1
+):
+    algos_hist = {algo: [] for algo in algos}
+
+    for algo in algos:
+        print(f'Running {algo}...')
+        with Pool(cpu_count()) as pool:
+            func = partial(worker, algo, N_bandits, n, p_max, p_diff, p_min)
+            results = list(pool.imap(func, range(m)))
+
+        algos_hist[algo] = results
+
+    return algos_hist
+
+
+def run_monte_carlo(
+        algos,
+        M,
+        N,
+        p_values,
+):
+    trials = {}
+    df_all = {}
+
+    for i in range(len(p_values)):
+        print(f'The p_values are {p_values[i]}')
+        trials[f'p{i}'] = monte_carlo(algos,
+                                      M,
+                                      N,
+                                      p_values[i][0],
+                                      p_values[i][1],
+                                      p_values[i][2],)
+
+    for i in range(len(p_values)):
+        df = pd.DataFrame()
+        for j in algos:
+            list = [0] * (N - 1)
+            for k in range(M):
+                list = np.array(list) + np.array([1 if x == 4 else 0 for x in trials[f'p{i}'][j][k]])
+            df[j] = (list / M).tolist()
+
+        df_all[f'p{i}'] = df.copy()
+
+    return df_all
+
+
+def plot_monte_carlo(
+        df_all,
+        algos,
+        col,
+        row,
+):
+    figure, axis = plt.subplots(row, col, figsize=(20, 10))
+    colors = sns.color_palette("Set2", len(algos))
+
+    m = 0  # column index
+    n = 0  # row index
+
+    for key in df_all:
+        ax = axis[n, m]
+        for i in range(len(algos)):
+            sns.lineplot(x=df_all[key].index, y=df_all[key][algos[i]], linewidth=0.5, color=colors[i], ax=ax)
+
+        ax.set_ylabel('')
+        ax.set_title(p_values[n * 3 + m])
+        ax.set_xticks([])
+
+        if m == 2:
+            # Create custom legend using prob_true and colors
+            custom_legend = [plt.Line2D([], [], color=colors[i], label=algos[i]) for i in range(len(algos))]
+            ax.legend(handles=custom_legend, loc='upper left', fontsize=9)
+            n += 1
+            m = 0
+        else:
+            m += 1
+
+    figure.suptitle('Comparing 5 Algorithms in 12 Different Win Rate Specifications', fontsize=16)
+
+    # Adjust the spacing between subplots
+    plt.tight_layout()
+
+    plt.savefig("comparison.png", dpi=300)
+    # plt.show()
+
+
+if __name__ == "__main__":
+    algos = ['epsilon_greedy', 'optim_init_val', 'ucb1', 'gradient_bandit', 'bayesian_bandits']
+    p_values = [[.35, .1, .1], [.35, .05, .1], [.35, .01, .1],
+                [.75, .1, .1], [.75, .05, .1], [.75, .01, .1],
+                [.75, .1, .62], [.75, .05, .62], [.75, .01, .62],
+                [.95, .1, .82], [.95, .05, .82], [.95, .01, .82],
+                ]
+
+    df_all = run_monte_carlo(algos, M, N, p_values)
+
+    plot_monte_carlo(df_all, algos, 3, 4)
+```
+
+For parallelization, I load the `multiprocessing` library. I also import the `BayesianAB` class from the script written by the five algorithms. In the above, the `worker()` function defines the task (or worker) for parallelization. The main function, which is named `monte_carlo()`, accepts six arguments:
+1. `algos` is a list of algorithms. The algorithms should match the names given as methods in the `BayesianAB()` method. In our case, we have
+```python
+algos = ['epsilon_greedy', 'optim_init_val', 'ucb1', 'gradient_bandit', 'bayesian_bandits']
+```
+2. `m` is the number of simulations/trials to run. The default value si 500. We will be running 2000 simulations. For each round/visitor, we will calculate the percentage that the bandit with the highest win rate was picked among these 2000 simulations;
+3. `n` is the number of rounds/visitors in each simulation. A default number of 10001 means it will have 10000 visitors;
+4. `p_max` is the highest win rate;
+5. `p_diff` is the smallest possible difference between the highest win rate and the second highest win rate;
+6. `p_min` is the lowest possible win rate.
+
+We will run simulations with 12 different combinations of `p_max`, `p_diff`, and `p_min`, given in the following `p_values` list:
+```
+    p_values = [[.35, .1, .1], [.35, .05, .1], [.35, .01, .1],
+                [.75, .1, .1], [.75, .05, .1], [.75, .01, .1],
+                [.75, .1, .62], [.75, .05, .62], [.75, .01, .62],
+                [.95, .1, .82], [.95, .05, .82], [.95, .01, .82],
+                ]
+```
+
+The `run_monte_carlo()` function calls the `monte_carlo()` function, then processes the results and calculate the percentage of the best bandit being picked in each round. The results are stored in a `dictionary` named `df_all`.
+
+The `plot_monte_carlo()` function, as the name suggests, plots the results in a 4-by-3 grid. Each subplot corresponds to a certain combination of `[p_max, p_diff, p_min]` which is given in the titles of the subplots.
+
+Here is the resulted plot with 2000 simulations each with 10000 visitors:
+
+![Comparison](comparison.png)
+
+Several results stand out:
+1. `Thompson Sampling` and `Gradient Bandit` both perform consistent good. `Thompson Sampling` has the best overall performance, picking the best bandit in over 90% of the simulations at the end of the 10000 rounds. It also edges out `Gradient Bandit` when `p_diff` is 0.01, which makes it possible to have a close second-best bandit;
+2. The `Epsilon Greedy` algorithm performs consistently regardless of win rate settings, but at a poor 20% rate of picking the best bandit. This may be partly due to a relatively high value of epsilon at 0.5;
+3. The algorithm that is the most sensitive to win rate settings is `UCB1`. `UCB1`'s performance when the win rate of the best bandit is at 0.95 can be puzzling. It can be due to a combination of the algorithm itself and a relatively high `c` value. When the best bandit has a win rate of 0.95, and especially when there exists a close second-best, the "bonus" that `UCB1` can give a bandit is small. After all, the win rate is not to be exceeding 1. As a result, `UCB1` has a hard time distinguishing between the best bandits and others that are almost as good.
 
 ## Summary, Extensions, and Applications
 
+In this article, I have introduced you to five algorithms that can be used in *real-time* A/B Testing and Randomized Controlled Trials. Compared to traditional methods that often involve the use of some form of Power Analysis to pre-determine minimum sample size, the algorithms introduced in this article have one additional advantage: They can be easily extended to experiments with more than 2 choices/versions/bandits, as illustrated in an example with 5 bandits throughout this article.
 
-## References (Incomplete)
+The algorithms introduced in this article are known as algorithms for the `Multi-Armed Bandit` problem, which is considered as the simplest form of **reinforcement learning**. We will come back to more complex reinforcement learning algorithms and problems in another article.
 
-https://www.udemy.com/course/bayesian-machine-learning-in-python-ab-testing/
+It is worth mentioning two extensions of the `Multi-Armed Bandit` problem: `Non-stationary Bandit` and `Contextual Bandit`. Non-stationary Bandit means that the win rates change over time. One particular algorithm that we introduced in this article is known to do badly in non-stationary bandit problems: `Optimistic Initial Values`. The reason is obvious: `Optimistic Initial Values` algorithm is designed to explore aggressively in the beginning. When the win rates change after this initial exploration stage has ended, it is hard for it to change course.
 
-http://incompleteideas.net/book/the-book-2nd.html (Chapter 2)
+`Contextual Bandit`, as the name suggests, means that there exists contextual information to be exploited. In a simple example, may be a casino has slot machines in different colors, and colors are not given at random: the green machines have higher win rate than the red ones. A new player would not know that at first, but as time goes on and if the player has explored sufficiently, it is possible to figure out the association between color and win rate, and hence makes choices accordingly. This is also why `Contextual Bandit` is also known as `Associative Search`. We will come back to this in another article, because `Contextual Bandit` algorithms can be used in regression problems.
 
-https://en.m.wikipedia.org/wiki/Multi-armed_bandit
+## References
 
-https://www.tensorflow.org/agents/tutorials/intro_bandit
-
-https://www.optimizely.com/optimization-glossary/multi-armed-bandit/
+* https://www.udemy.com/course/*bayesian-machine-learning-in-python-ab-testing/
+* http://incompleteideas.net/book/the-book-2nd.html (Chapter 2)
+* https://en.m.wikipedia.org/wiki/Multi-armed_bandit
+* https://www.tensorflow.org/agents/tutorials/intro_bandit
+* https://www.optimizely.com/optimization-glossary/multi-armed-bandit/
