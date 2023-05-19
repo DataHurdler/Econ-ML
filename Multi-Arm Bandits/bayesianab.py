@@ -85,7 +85,7 @@ class BayesianAB:
 
             self.update(i, k)
 
-        return self.history_bandit
+        return self.history
 
     ####################
     # optimistic initial values
@@ -103,7 +103,7 @@ class BayesianAB:
 
             self.update(i, k)
 
-        return self.history_bandit
+        return self.history
 
     ####################
     # upper confidence bound (UCB1)
@@ -127,7 +127,7 @@ class BayesianAB:
                 bandit_count[i] = 0
             bandit_count[i] += 1
 
-        return self.history_bandit
+        return self.history
 
     ####################
     # gradient_bandit update
@@ -171,7 +171,7 @@ class BayesianAB:
                                  self.prob_win.copy()])
             self.history_bandit.append(i)  # for Monte Carlo
 
-        return self.history_bandit
+        return self.history
 
     ####################
     # bayesian_bandits sample
@@ -226,7 +226,7 @@ class BayesianAB:
             self.history_bandit.append(i)  # for Monte Carlo
 
         self.history = [a_hist, b_hist]
-        return self.history_bandit
+        return self.history
 
 
 # This cell defines functions to plot history. Do not change this cell.
