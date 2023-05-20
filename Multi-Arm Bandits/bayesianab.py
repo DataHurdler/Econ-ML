@@ -10,8 +10,6 @@ N_bandits = 5
 # set the number of trials
 # only in demonstration
 N = 100000
-# set the number of trials to try all bandits
-N_start = 50
 
 
 class BayesianAB:
@@ -24,7 +22,7 @@ class BayesianAB:
             number_of_trials: int = 100000,
             p_max: float = .75,
             p_diff: float = .05,
-            p_min: float = .8
+            p_min: float = .1
     ):
         if p_min > p_max - p_diff:
             raise ValueError("Condition p_min < p_max - p_diff not satisfied. Exit...")
@@ -34,12 +32,12 @@ class BayesianAB:
         self.history = []
         self.history_bandit = []  # for Monte Carlo
         self.count = [0] * number_of_bandits  # only in demonstration
-        # a and b are for bayesian_bandits only
-        self.alpha = [1] * number_of_bandits
-        self.beta = [1] * number_of_bandits
         # preference and pi are for gradient_bandit only
         self.pref = [0] * number_of_bandits
         self.pi = [1 / number_of_bandits] * number_of_bandits
+        # alpha and beta are for bayesian_bandits only
+        self.alpha = [1] * number_of_bandits
+        self.beta = [1] * number_of_bandits
         # number of trials/visitors
         self.N = number_of_trials
 
@@ -271,9 +269,11 @@ if __name__ == "__main__":
 
     # plot the entire experiment history
     plot_history(history=eg.history, prob_true=eg.prob_true)
+    # plt.savefig("eg.png")
 
     # plot history of epsilon greedy after 100 pulls
     plot_history(history=eg.history, prob_true=eg.prob_true, k=100)
+    # plt.savefig("eg_100.png")
 
     # optimistic initial values
     oiv = BayesianAB(N_bandits)

@@ -50,18 +50,12 @@ We will begin our in-depth discussion of algorithms with `Epsilon Greedy`. For e
 * pseudocode
 * `Python` code
 
-<!--
-I learned about these algorithms from the Udemy course [Bayesian Machine Learning in Python: A/B Testing](https://www.udemy.com/course/bayesian-machine-learning-in-python-ab-testing/). Although `Python` scripts were provided in the course, the ones that I will show in this article were first built on my own, then updated based on those provided in the course for better efficiency and practicality.
--->
-
 Algorithms in the `Greedy` family applies a simple logic: choose the version that gives the best *observed* expected payoff. For simplicity, and for the rest of this article, let's consider an e-commerce website that has 5 different designs but sells a single product: an EveryDay-Carry (EDC) musical instrument for 69.99 dollars. If we run an A/B/N test on the web designs, only 2 outcomes are possible from each visitor: buy or not buy.
 
-While not necessary, it is often a good idea to try all versions in the beginning. For example, for the first 50 visitors, we can send them to each design with equal probability. From that point on, the algorithm finds the version that gives the best expected payoff, and play that version. Here is the pseudocode for a simple `Greedy` algorithm:
+Here is the pseudocode for a simple `Greedy` algorithm:
 
 ```
-for i in [1, 50]:
-    choose each bandit randomly
-for i > 50, loop:
+loop:
     j = argmax(expected bandit win rates)
     x = reward (1 or 0) from playing bandit j
     bandit[j].update_mean(x)
@@ -79,12 +73,12 @@ $$\bar{x}_n=\frac{\sum_{i=1}^n{x_i}}{n}$$
 
 increases with $n$.
 
-It should be obvious that the above `Greedy` algorithm has a problem: once it finds a bandit with a *high enough* payoff, it rarely switches. In other words, it almost never explores. The `Epsilon Greedy` algorithm provides a simple fix:
+While not necessary, it can sometimes be a good idea to try all versions in the beginning. For example, for the first 50 visitors, we can send them to each design with equal probability. From that point on, the algorithm finds the version that gives the best expected payoff, and play that version.
+
+It should be obvious that the simple `Greedy` algorithm has a problem: once it finds a bandit with a *high enough* payoff, it rarely switches. In other words, it almost never explores. The `Epsilon Greedy` algorithm provides a simple fix:
 
 ```
-for i in [1, 50]:
-    choose each bandit randomly
-for i > 50, loop:
+loop:
     p = random number in [0, 1]
     if p < epsilon:
         j = choose a bandit at random
@@ -104,82 +98,82 @@ import random
 
 # set the number of bandits
 N_bandits = 5
-# set the number of trials/visitors
+# set the number of trials
 # only in demonstration
 N = 100000
-# set the number of trials to try all bandits
-N_start = 50
+
 
 class BayesianAB:
-  def __init__(
-      self,
-      number_of_bandits: int = 2,
-  ):
-    self.prob_true = [0] * number_of_bandits # only in demonstration
-    self.prob_win = [0] * number_of_bandits
-    self.history = []
-    self.count = [0] * number_of_bandits
-    # preference and pi are for gradient_bandit only
-    self.pref = [0] * number_of_bandits
-    self.pi = [1/number_of_bandits] * number_of_bandits
-    # alpha and beta are for bayesian_bandits only
-    self.alpha = [1] * number_of_bandits
-    self.beta = [1] * number_of_bandits
+    def __init__(
+            self,
+            number_of_bandits: int = 2,
+            number_of_trials: int = 100000,
+            p_max: float = .75,
+            p_diff: float = .05,
+            p_min: float = .8
+    ):
+        if p_min > p_max - p_diff:
+            raise ValueError("Condition p_min < p_max - p_diff not satisfied. Exit...")
 
-    # set the last bandit to have a win rate of 0.75 and the rest lower
+        self.prob_true = [0] * number_of_bandits  # only in demonstration
+        self.prob_win = [0] * number_of_bandits
+        self.history = []
+        self.history_bandit = []  # for Monte Carlo
+        self.count = [0] * number_of_bandits  # only in demonstration
+        # preference and pi are for gradient_bandit only
+        self.pref = [0] * number_of_bandits
+        self.pi = [1 / number_of_bandits] * number_of_bandits
+        # a and b are for bayesian_bandits only
+        self.alpha = [1] * number_of_bandits
+        self.beta = [1] * number_of_bandits
+        # number of trials/visitors
+        self.N = number_of_trials
+
+        # set the last bandit to have a win rate of 0.75 and the rest lower
+        # only in demonstration
+        self.prob_true[-1] = p_max
+        for i in range(0, number_of_bandits - 1):
+            self.prob_true[i] = round(p_max - random.uniform(p_diff, p_max - p_min), 2)
+
+    # Receives a random value of 0 or 1
     # only in demonstration
-    self.prob_true[-1] = 0.75
-    for i in range(0, number_of_bandits-1):
-      self.prob_true[i] = round(0.75 - random.uniform(0.05, 0.65), 2)
+    def pull(
+            self,
+            i,
+    ) -> bool:
+        return random.random() < self.prob_true[i]
 
-  # Receives a random value of 0 or 1
-  # only in demonstration
-  def pull(
-      self,
-      i,
-  ) -> bool:
-    return random.random() < self.prob_true[i]
+    # Updates the mean
+    def update(
+            self,
+            i,
+            k,
+    ) -> None:
+        outcome = self.pull(i)
+        # may use a constant discount rate to discount past
+        self.prob_win[i] = (self.prob_win[i] * k + outcome) / (k + 1)
+        self.history.append(self.prob_win.copy())
+        self.history_bandit.append(i)  # for Monte Carlo
+        self.count[i] += 1
 
-  # Updates the mean
-  def update(
-      self,
-      i,
-      k,
-  ):
-    outcome = self.pull(i)
-    # may use a constant discount rate to discount past
-    self.prob_win[i] = (self.prob_win[i] * k + outcome) / (k+1)
-    self.history.append(self.prob_win.copy())
-    self.count[i] += 1
+    ####################
+    # epsilon greedy
+    def epsilon_greedy(
+            self,
+            epsilon: float = 0.5,
+    ):
 
-  ####################
-  # epsilon greedy
-  def epsilon_greedy(
-      self,
-      epsilon: float, # decay epsilon?
-  ) -> list:
+        self.history.append(self.prob_win.copy())
 
-    self.history.append(self.prob_win.copy())
+        for k in range(1, self.N):
+            if random.random() < epsilon:
+                i = random.randrange(0, len(self.prob_win))
+            else:
+                i = np.argmax(self.prob_win)
 
-    for k in range(0, N_start):
-        i = random.randrange(0, len(self.prob_win))
-        self.update(i, k)
+            self.update(i, k)
 
-    for k in range(N_start, N):
-      # find index of the largest value in prob_win
-      i = np.argmax(self.prob_win)
-
-      if random.random() < epsilon:
-        j = random.randrange(0, len(self.prob_win))
-        # If the randomly picked bandit is the same as one from argmax, pick a different one
-        while j == i:
-          j = random.randrange(0, len(self.prob_win))
-        else:
-          i = j
-
-      self.update(i, k)
-
-    return self.history
+        return self.history
 ```
 
 Let's break it down. First, we import two libraries: `numpy` and `random`. We will be using functions from these libraries such as `argmax()` from `numpy` and `randrange()` from `random`:
@@ -196,8 +190,6 @@ We then set three global parameters:
 N_bandits = 5
 # set the number of trials/visitors
 N = 100000
-# set the number of trials to try all bandits
-N_start = 50
 ```
 
 In practice, the value of `N_bandits` depends on the number of versions your experiment is set out to test, and the number of visitors, `N`, is unknown.
@@ -206,60 +198,84 @@ In this script, we are creating a class named `BayesianAB`, and put all the algo
 
 ```python
 class BayesianAB:
-  def __init__(
-      self,
-      number_of_bandits: int = 2,
-  ):
-    self.prob_true = [0] * number_of_bandits # only in demonstration
-    self.prob_win = [0] * number_of_bandits
-    self.history = []
-    self.count = [0] * number_of_bandits
-    self.a = [1] * number_of_bandits
-    self.b = [1] * number_of_bandits
+    def __init__(
+            self,
+            number_of_bandits: int = 2,
+            number_of_trials: int = 100000,
+            p_max: float = .75,
+            p_diff: float = .05,
+            p_min: float = .8
+    ):
+        if p_min > p_max - p_diff:
+            raise ValueError("Condition p_min < p_max - p_diff not satisfied. Exit...")
+
+        self.prob_true = [0] * number_of_bandits  # only in demonstration
+        self.prob_win = [0] * number_of_bandits
+        self.history = []
+        self.history_bandit = []  # for Monte Carlo
+        self.count = [0] * number_of_bandits  # only in demonstration
+        # preference and pi are for gradient_bandit only
+        self.pref = [0] * number_of_bandits
+        self.pi = [1 / number_of_bandits] * number_of_bandits
+        # a and b are for bayesian_bandits only
+        self.alpha = [1] * number_of_bandits
+        self.beta = [1] * number_of_bandits
+        # number of trials/visitors
+        self.N = number_of_trials
 ```
 
-The `BayesianAB` class has a default of 2 bandits, as set by `number_of_bandits: int = 2`. We pre-allocate 8 lists to store several values:
+The `BayesianAB` class accepts 5 parameters:
+* `number_of_bandits` has a default value of 2;
+* `number_of_trials` indicates the number of rounds/visitors, which has a default value of 100,000;
+* `p_max` is the highest win rate;
+* `p_diff` is the smallest possible difference between the highest win rate and the second highest win rate;
+* `p_min` is the lowest possible win rate, andt the condition `p_min > p_max - p_diff` must be met.
+
+The `BayesianAB` class pre-allocates 10 lists to store various values necessary for different tasks:
 * `prob_true` stores the *true* win rate of each bandit. These win rates are to be generated next. In practice, you do not know these true win rate values;
 * `prob_win` stores the *observed (expected)* win rate of each bandit. Values in this list are to be updated during each round of the experiment;
-* `history` stores the history of `prob_win` in each trial. This is important for both updating the mean in constant time (see above) and the evaluation of bandit/algorithm performances afterwards;
+* `history` stores the history of `prob_win` in each trial/round. This is important for both updating the mean in constant time (see above) and the evaluation of bandit/algorithm performances afterwards;
+* `history_bandit` stores the history of what bandit was picked in each trial/round. This is useful when we need to run the Monte Carlo simulation for testbed;
 * `count` stores the number of times that each bandit was chosen;
 * `pref` and `pi` are values for the `Gradient Bandit` algorithm;
-* `alpha` and `beta` are values used in `Thompson Sampling`, the last algorithm to be considered in this article.
+* `alpha` and `beta` are values used in `Thompson Sampling`, the last algorithm to be considered in this article;
+* `N` stores the number of trials and is used by each method/algorithm in the `BayesianAB` class.
 
 The following lines generate the *true* win rates:
 
 ```python
-    # set the last bandit to have a win rate of 0.75 and the rest lower
-    # only in demonstration
-    self.prob_true[-1] = 0.75
-    for i in range(0, number_of_bandits-1):
-      self.prob_true[i] = round(0.75 - random.uniform(0.05, 0.65), 2)
+        # set the last bandit to have a win rate of 0.75 and the rest lower
+        # only in demonstration
+        self.prob_true[-1] = p_max
+        for i in range(0, number_of_bandits - 1):
+            self.prob_true[i] = round(p_max - random.uniform(p_diff, p_max - p_min), 2)
 ```
 
-The last bandit has the highest win rate at .75, and the rest of them are randomized between .1 and .7. An alternative method is to hardcode the probabilities. I used the randomized approach to allow for flexibility in specifying the number of bandits using `N_bandits` (or `number_of_bandits` inside the `BayesianAB` class).
+The last bandit always has the highest win rate, `p_max`, and the rest of them are randomized between `p_min` and `p_max - p_diff`. I used this approach to allow for flexibility in specifying the number of bandits using `N_bandits` (or `number_of_bandits` inside the `BayesianAB` class).
 
 Next, we define two functions used by almost every algorithm:
 
 ```python
-  # Returns a random value of 0 or 1
-  # only in demonstration
-  def pull(
-      self,
-      i,
-  ) -> bool:
-    return random.random() < self.prob_true[i]
+    # Receives a random value of 0 or 1
+    # only in demonstration
+    def pull(
+            self,
+            i,
+    ) -> bool:
+        return random.random() < self.prob_true[i]
 
-  # Updates the mean
-  def update(
-      self,
-      i,
-      k,
-  ):
-    outcome = self.pull(i)
-    # may use a constant discount rate to discount past
-    self.prob_win[i] = (self.prob_win[i] * k + outcome) / (k+1)
-    self.history.append(self.prob_win.copy())
-    self.count[i] += 1
+    # Updates the mean
+    def update(
+            self,
+            i,
+            k,
+    ) -> None:
+        outcome = self.pull(i)
+        # may use a constant discount rate to discount past
+        self.prob_win[i] = (self.prob_win[i] * k + outcome) / (k + 1)
+        self.history.append(self.prob_win.copy())
+        self.history_bandit.append(i)  # for Monte Carlo
+        self.count[i] += 1
 ```
 
 The first function, `pull()`, returns either True or False depending on if the value of `random.random()` is less than the true win rate of bandit $i$. This is unnecessary in practice. Instead, a call to either the `BayesianAB` class or a specific method (such as `Epsilon Greedy`) inside `BayesianAB` should be triggered with the arrival of a new visitor, and by the end of the visit, you would know if the visitor has purchased (True) or not (False). In `Python`, `True` is given a numerical value of 1 and `False` a value of 0.
@@ -269,38 +285,27 @@ The `update()` function updates the mean. It also adds the updated expected win 
 Here is the actual method inside `BayesianAB` that implements `epsilon greedy`:
 
 ```python
-  def epsilon_greedy(
-      self,
-      epsilon: float = 0.5, # decay epsilon?
-  ) -> list:
+    def epsilon_greedy(
+            self,
+            epsilon: float = 0.5,
+    ):
 
-    self.history.append(self.prob_win.copy())
+        self.history.append(self.prob_win.copy())
 
-    for k in range(0, N_start):
-        i = random.randrange(0, len(self.prob_win))
-        self.update(i, k)
+        for k in range(1, self.N):
+            if random.random() < epsilon:
+                i = random.randrange(0, len(self.prob_win))
+            else:
+                i = np.argmax(self.prob_win)
 
-    for k in range(N_start, N):
-      # find index of the largest value in prob_win
-      i = np.argmax(self.prob_win)
+            self.update(i, k)
 
-      if random.random() < epsilon:
-        j = random.randrange(0, len(self.prob_win))
-        # If the randomly picked bandit is the same as one from argmax, pick a different one
-        while j == i:
-          j = random.randrange(0, len(self.prob_win))
-        else:
-          i = j
-
-      self.update(i, k)
-
-    return self.history
+        return self.history
 ```
 
-It follows the logic outlined in the pseudocode. The first `for` loop assigns visitors randomly to the 5 bandits for the first 50 (given by `N_start`) of them. After each assignment, it calls the `update()` function to update the mean. Starting with the 51st visitor (`Python` starts counting at 0), the second `for` loop is triggered and the following steps are followed:
-1. Find out which bandit ($i$) has the highest expected payoff;
-2. Checks if a random value is smaller than `epsilon` which can be specified when the `epsilon_greedy()` method is called. `epsilon` also has a default value of $0.5$. If this is `True`, then a random bandit ($j$) is selected;
-3. If the randomly selected bandit is the same as the one with the highest expected payoff (i.e., $j=i$), then randomly choose another bandit, until the two are not the same;
+It follows the logic outlined in the pseudocode. Inside the `for` loop, these steps are followed:
+1. Checks if a random value is smaller than `epsilon` which can be specified when the `epsilon_greedy()` method is called. `epsilon` also has a default value of $0.5$. If this is `True`, then a random bandit is selected;
+2. Otherwise, select the bandit that has the highest expected win rate;
 4. Update the mean for the chosen bandit by calling the `update()` function.
 
 The `epsilon_greedy()` method returns the list `history`, which stores the complete history for run as discussed earlier.
@@ -315,15 +320,15 @@ print(f'The observed win rates: {eg.prob_win}')
 print(f'Number of times each bandit was played: {eg.count}')
 ```
 
-Here, we call `epsilon_greedy()` with the default value for `epsilon`. This means the algorithm will explore half of the time. We also print out the true win rates, the expected win rates, and the number of times that each bandit was played. Here is the printed output from a typical run:
+Here, we call `epsilon_greedy()` with the default value for `epsilon`. This means the algorithm will explore half of the time. We also print out the true win rates, the expected win rates, and the number of times that each bandit was played. Here is the printed output from a particular run:
 
 ```
-The true win rates: [0.65, 0.13, 0.33, 0.66, 0.75]
-The observed win rates: [0.6487, 0.1411, 0.2035, 0.5903, 0.5989]
-Number of times each bandit was played: [50141, 12596, 12385, 12443, 12435]
+The true win rates: [0.66, 0.19, 0.41, 0.47, 0.75]
+The observed win rates: [0.6626, 0.1125, 0.2569, 0.2425, 0.4193]
+Number of times each bandit was played: [60045, 9964, 9910, 10151, 9929]
 ```
 
-In the above run, the best bandit was NOT the one that was selected the most. The second best bandit, with a 0.65 win rate, was picked about half of the time, as dictated by the value of `epsilon`. Such outcome is due to the fact that the bandit with a 0.65 win rate did exceptional well among the first 50 visitors. Since it is close enough to 0.75, the win rate of the best bandit, random jumps to the bandit with the 0.75 win rate were not enough to "flip" the results.
+In the above run, the best bandit was NOT the one that was selected the most. The second best bandit, with a 0.66 win rate, was picked about 60% of the time, as dictated by the value of `epsilon`. Such outcome is due to the fact that the bandit with a 0.66 win rate did well in the beginning. Since it is close enough to 0.75, the default win rate of the best bandit, random jumps to the bandit with the 0.75 win rate were not enough to "flip" the results.
 
 Also note that the expected win rates have not converged to the true win rates except for the "chosen" one after 100,000 visitors. However, if the number of visitors approaches infinity, which means that each version would be picked infinite times, all win rates would converge to their true values. This, in turn, means that the best bandit would eventually overtake the second-best if the experiment runs *long enough*. In other words, `Epsilon Greedy` guarantees the identification of the best bandit as $n$ approaches infinity.
 
@@ -334,25 +339,26 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+
 def plot_history(
-    history: list,
-    prob_true: list,
-    k = N,
+        history: list,
+        prob_true: list,
+        k=N,
 ):
+    df_history = pd.DataFrame(history[:k])
 
-  df_history = pd.DataFrame(history[:k])
+    plt.figure(figsize=(20, 5))
 
-  plt.figure(figsize=(20,5))
+    # Define the color palette
+    colors = sns.color_palette("Set2", len(prob_true))
 
-  # Define the color palette
-  colors = sns.color_palette("Set2", len(prob_true))
+    for i in range(len(prob_true)):
+        sns.lineplot(x=df_history.index, y=df_history[i], color=colors[i])
 
-  for i in range(len(prob_true)):
-    sns.lineplot(x=df_history.index, y=df_history[i], color=colors[i])
-  
-  # Create custom legend using prob_true and colors
-  custom_legend = [plt.Line2D([], [], color=colors[i], label=prob_true[i]) for i in range(len(prob_true))]
-  plt.legend(handles=custom_legend)
+    # Create custom legend using prob_true and colors
+    custom_legend = [plt.Line2D([], [], color=colors[i], label=prob_true[i]) for i in range(len(prob_true))]
+    plt.legend(handles=custom_legend)
+
 ```
 
 Then execute:
@@ -365,7 +371,7 @@ Here is the output from the above run:
 
 ![Epsilon Greedy](eg.png)
 
-We can also get the visualization for the first 100 visitors, which shows that the third bandit, the a 0.65 win rate, jumped ahead early:
+We can also get the visualization for the first 100 visitors, which shows that the first bandit, the a 0.66 win rate, jumped ahead early:
 
 ```python
 plot_history(history=eg.history, prob_true=eg.prob_true, k=100)
@@ -375,7 +381,7 @@ plot_history(history=eg.history, prob_true=eg.prob_true, k=100)
 
 ## Optimistic Initial Values
 
-The `Optimistic Initial Values` algorithm is one of my favorites (the other being the `Gradient Bandit` algorithm) amongst the algorithms discussed in this article. While `Epsilon Greedy` focused on "exploit" and can end up choosing the second-best version, the `Optimistic Initial Values` algorithm puts more focus on "explore" initially, while staying `greedy`, i.e., pick the strategy that shows the highest expected win rate. The name of this algorithm informs you about what it does: at the start of the experiment, each bandit is set to have a high expected win rate, i.e., we are "optimistic" about each bandit. This ensures that each of them is played a fair number of times initially. As a result, there is no need to set aside 50 visitors to "test the water" in the beginning. If we compare `Epsilon Greedy` to English auctions where the values go up over time, `Optimistic Initial Value` is comparable to Dutch auctions where the values go *down* over time. Here is the pseudocode:
+The `Optimistic Initial Values` algorithm is one of my favorites (the other being the `Gradient Bandit` algorithm) amongst the algorithms discussed in this article. While `Epsilon Greedy` focused on "exploit" and can end up choosing the second-best version, the `Optimistic Initial Values` algorithm puts more focus on "explore" initially, while staying `greedy`, i.e., pick the strategy that shows the highest expected win rate. The name of this algorithm informs you about what it does: at the start of the experiment, each bandit is set to have a high expected win rate, i.e., we are "optimistic" about each bandit. This ensures that each of them is played a fair number of times initially. If we compare `Epsilon Greedy` to English auctions where the values go up over time, `Optimistic Initial Value` is comparable to Dutch auctions where the values go *down* over time. Here is the pseudocode:
 
 ```
 p_init = 5 # a large value as initial win rate for ALL bandits
@@ -389,23 +395,22 @@ loop:
 Assuming you already have the code from the `Epsilon Greedy` section, you can add the following method inside the `BayesianAB` class to run the `Optimistic Initial Values` algorithm:
 
 ```python
-  ####################
-  # optimistic initial values
-  def optim_init_val(
-      self,
-      init_val: float,
-  ) -> list:
+    ####################
+    # optimistic initial values
+    def optim_init_val(
+            self,
+            init_val: float = 0.99,
+    ):
 
-    self.prob_win = [init_val] * len(self.prob_win)
-    self.history.append(self.prob_win.copy())
+        self.prob_win = [init_val] * len(self.prob_win)
+        self.history.append(self.prob_win.copy())
 
-    for k in range(1, N):
-      # find index of the largest value in prob_win
-      i = np.argmax(self.prob_win)
+        for k in range(1, self.N):
+            i = np.argmax(self.prob_win)
 
-      self.update(i, k)
+            self.update(i, k)
 
-    return self.history
+        return self.history
 ```
 
 The only thing new here is the line that assigns `init_val` to `prob_win` in the beginning. We can execute the following to get results and visualization:
@@ -464,34 +469,32 @@ loop:
 Adding the following method into `BayesianAB` will implement `UCB1`:
 
 ```python
-  ####################
-  # upper confidence bound (UCB1)
-  def ucb1(
-      self,
-      c = 1,
-  ) -> list:
+    ####################
+    # upper confidence bound (UCB1)
+    def ucb1(
+            self,
+            c=1,
+    ):
 
-    self.history.append(self.prob_win.copy())
-    bandit_count = [0.0001] * len(self.prob_win)
-    # bound = [0] * len(self.prob_win)
+        self.history.append(self.prob_win.copy())
+        bandit_count = [0.0001] * len(self.prob_win)
 
-    for k in range(1, N):
-      bound = self.prob_win + c * np.sqrt(2 * np.log(k) / bandit_count)
-      # find index of the largest value in bound
-      i = np.argmax(bound)
+        for k in range(1, self.N):
+            bound = self.prob_win + c * np.sqrt(np.divide(2 * np.log(k), bandit_count))
+            i = np.argmax(bound)
 
-      self.update(i, k)
+            self.update(i, k)
 
-      if bandit_count[i] < 1:
-        bandit_count[i] = 0
-      bandit_count[i] += 1
+            if bandit_count[i] < 1:
+                bandit_count[i] = 0
+            bandit_count[i] += 1
 
-    return self.history
+        return self.history
 ```
 
-This is very similar to what we had before. One thing to note is that I give a very small initial value ($0.0001$) to `bandit_count` to avoid the division of zero in the beginning of the experiment. Later, I reversed the value to 0 with the `if` statement. An alternative approach is one that is similar to what we did in `Epsilon Greedy`: run the first 50 iterations on all versions before implementing `UCB1` from the 51st visitor onward.
+This is very similar to what we had before. One thing to note is that I give a very small initial value ($0.0001$) to `bandit_count` to avoid the division of zero in the beginning of the experiment. Later, I reversed the value to 0 with the `if` statement. An alternative approach is to run the first several iterations on all versions before implementing `UCB1` thereafter.
 
-`UCB1` has a parameter $c$, which controls the degree of exploration. Other things being equal, A larger value $c$ means a higher reward. The default value is set to 1 in the above script.
+`UCB1` has a parameter, $c$, which controls the degree of exploration. Other things being equal, A larger value $c$ means a higher reward. The default value is set to 1 in the above script.
 
 Executing the following will give us results and visualization for `UCB1`:
 
@@ -556,48 +559,49 @@ where `H.update()` updates the values of $H(i)$ (the bandit that was chosen) and
 Here is the `Python` implementation for `Gradient Bandit`:
 
 ```python
-  ####################
-  # gradient_bandit update
-  def gb_update(
-      self,
-      i,
-      k,
-      a,
-  ):
+    ####################
+    # gradient_bandit update
+    def gb_update(
+            self,
+            i,
+            k,
+            a,
+    ):
 
-    outcome = self.pull(i)
-    for z in range(len(self.pref)):
-      if z == i:
-        self.pref[z] = self.pref[z] + a * (outcome - self.prob_win[z]) * (1- self.pi[z])
-      else:
-        self.pref[z] = self.pref[z] - a * (outcome - self.prob_win[z]) * self.pi[z]
-    
-    self.prob_win[i] = (self.prob_win[i] * k + outcome) / (k+1)
+        outcome = self.pull(i)
+        for z in range(len(self.pref)):
+            if z == i:
+                self.pref[z] = self.pref[z] + a * (outcome - self.prob_win[z]) * (1 - self.pi[z])
+            else:
+                self.pref[z] = self.pref[z] - a * (outcome - self.prob_win[z]) * self.pi[z]
 
-    return self.pref
+        self.prob_win[i] = (self.prob_win[i] * k + outcome) / (k + 1)
 
-  # gradient bandit algorithm
-  def gradient_bandit(
-      self,
-      a = 0.2,
-  ) -> list:
+        return self.pref
 
-    self.history.append([self.pi.copy(),
-                         self.pref.copy(),
-                         self.prob_win.copy()])
+    # gradient bandit algorithm
+    def gradient_bandit(
+            self,
+            a=0.2,
+    ):
 
-    for k in range(1, N):
-      self.pi = np.exp(self.pref) / sum(np.exp(self.pref))
-      pick = random.choices(list(range(len(self.pref))), weights = self.pi)
-      i = pick[0]
-      self.pref = self.gb_update(i, k, a)
+        self.history.append([self.pi.copy(),
+                             self.pref.copy(),
+                             self.prob_win.copy()])
 
-      self.count[i] += 1
-      self.history.append([self.pi.copy(),
-                           self.pref.copy(),
-                           self.prob_win.copy()])
-    
-    return self.history
+        for k in range(1, self.N):
+            self.pi = np.exp(self.pref) / sum(np.exp(self.pref))
+            pick = random.choices(np.arange(len(self.pref)), weights=self.pi)
+            i = pick[0]
+            self.pref = self.gb_update(i, k, a)
+
+            self.count[i] += 1
+            self.history.append([self.pi.copy(),
+                                 self.pref.copy(),
+                                 self.prob_win.copy()])
+            self.history_bandit.append(i)  # for Monte Carlo
+
+        return self.history
 ```
 
 Here are some notes on the `Python` implementation of the `Gradient Bandit` algorithm:
@@ -611,37 +615,36 @@ Because `gradient_bandit()` saves arrays in `history`, we also need to update th
 
 ```python
 def plot_history(
-    history: list,
-    prob_true: list,
-    col = 2,
-    k = N,
+        history: list,
+        prob_true: list,
+        col=2,
+        k=N,
 ):
+    if type(history[0][0]) == list:  # To accommodate gradient bandit
+        df_history = pd.DataFrame([arr[col] for arr in history][:k])
+    else:
+        df_history = pd.DataFrame(history[:k])
 
-  if type(history[0][0]) == list: # to accommodate gradient bandit
-    df_history = pd.DataFrame([arr[col] for arr in history][:k])
-  else:
-    df_history = pd.DataFrame(history[:k])
+    plt.figure(figsize=(20, 5))
 
-  plt.figure(figsize=(20,5))
+    # Define the color palette
+    colors = sns.color_palette("Set2", len(prob_true))
 
-  # Define the color palette
-  colors = sns.color_palette("Set2", len(prob_true))
+    for i in range(len(prob_true)):
+        sns.lineplot(x=df_history.index, y=df_history[i], color=colors[i])
 
-  for i in range(len(prob_true)):
-    sns.lineplot(x=df_history.index, y=df_history[i], color=colors[i])
-  
-  # Create custom legend using prob_true and colors
-  custom_legend = [plt.Line2D([], [], color=colors[i], label=prob_true[i]) for i in range(len(prob_true))]
-  plt.legend(handles=custom_legend)
+    # Create custom legend using prob_true and colors
+    custom_legend = [plt.Line2D([], [], color=colors[i], label=prob_true[i]) for i in range(len(prob_true))]
+    plt.legend(handles=custom_legend)
 ```
 
 The updates occurred in
 
 ```python
-  if type(history[0][0]) == list:
-    df_history = pd.DataFrame([arr[col] for arr in history][:k])
-  else:
-    df_history = pd.DataFrame(history[:k])
+    if type(history[0][0]) == list:  # To accommodate gradient bandit
+        df_history = pd.DataFrame([arr[col] for arr in history][:k])
+    else:
+        df_history = pd.DataFrame(history[:k])
 ```
 
 with the added parameter `col`. This is to accommodate the arrays saved in history by `gradient_bandit()`. The `if` statement checks whether the first element in `history` is a `list`. If it is, then `history` was saved from `gradient_bandit()` and we would need to extract the specific column, given by `col`, for plotting. The default value of `col` is 2, which is to plot the history of the win rates.
@@ -739,66 +742,55 @@ The two functions that need to be added are `bb_sample()` and `bb_update()`. Her
 ```python
 from scipy.stats import beta
 
-  # bayesian_bandits sample
-  def bb_sample(
-      self,
-      a: int, # alpha
-      b: int, # beta
-      sample_size: int = 10,
-  ) -> list:
+    ####################
+    # bayesian_bandits update
+    def bb_update(
+            self,
+            a,
+            b,
+            i,
+    ):
 
-    return np.random.beta(a, b, sample_size)
-  
-  # bayesian_bandits update
-  def bb_update(
-      self,
-      a: list,
-      b: list,
-      i,
-  ):
+        outcome = self.pull(i)
+        a[i] += outcome
+        b[i] += 1 - outcome
+        self.count[i] += 1
 
-    outcome = self.pull(i)
-    # may use a constant discount rate to discount past
-    a[i] += outcome
-    b[i] += 1 - outcome
-    self.count[i] += 1
-  
-    return a, b
-  
-  ####################
-  # Bayesian Bandits
-  # For Bernoulli distribution, the conjugate prior is Beta distribution
-  def bayesian_bandits(
-      self,
-      sample_size: int = 10,
-  ) -> list:
+        return a, b
 
-    a_hist, b_hist = [], []
-    a_hist.append(self.alpha.copy())
-    b_hist.append(self.beta.copy())
+    # Bayesian bandits
+    # For Bernoulli distribution, the conjugate prior is Beta distribution
+    def bayesian_bandits(
+            self,
+            sample_size: int = 10,
+    ):
 
-    for k in range(1, N):
-      sample_max = []
+        a_hist, b_hist = [], []
+        a_hist.append(self.alpha.copy())
+        b_hist.append(self.beta.copy())
 
-      for m in range(len(self.prob_true)):
-        m_max = np.max(self.bb_sample(self.alpha[m], self.beta[m], sample_size))
-        sample_max.append(m_max.copy())
-      
-      i = np.argmax(sample_max)
+        for k in range(1, self.N):
+            sample_max = []
 
-      self.alpha, self.beta = self.bb_update(self.alpha, self.beta, i)
-      a_hist.append(self.alpha.copy())
-      b_hist.append(self.beta.copy())
-      
-    self.history = [a_hist, b_hist]
-    return self.history
+            for m in range(len(self.prob_true)):
+                m_max = np.max(np.random.beta(self.alpha[m], self.beta[m], sample_size))
+                sample_max.append(m_max.copy())
+
+            i = np.argmax(sample_max)
+
+            self.alpha, self.beta = self.bb_update(self.alpha, self.beta, i)
+            a_hist.append(self.alpha.copy())
+            b_hist.append(self.beta.copy())
+            self.history_bandit.append(i)  # for Monte Carlo
+
+        self.history = [a_hist, b_hist]
+        return self.history
 ```
 
 Let's walk through this script:
 1. We have already initiated `alpha` and `beta` at the start of the `BayesianAB` class. They are the hyperparameters in the Beta distribution;
 2. We import `beta` from `scipy.stats` since the conjugate prior for Bernoulli distribution is the Beta distribution.
-3. The function `bb_sample()` returns 10 random values (by default) from the `Beta` function based on the hyperparameters `alpha` and `beta`;
-4. The function `bb_update()` updates the hyperparameter values based on the outcome from the last visitor for bandit $i$: if the outcome was `True`, then the value of `alpha` increases by 1; otherwise, the value of `beta` increases by 1.
+3. The function `bb_update()` updates the hyperparameter values based on the outcome from the last visitor for bandit $i$: if the outcome was `True`, then the value of `alpha` increases by 1; otherwise, the value of `beta` increases by 1.
 
 For the actual implementation of the `Bayesian Bandits` in the `bayesian_bandits()` method, it is largely consistent with what we have been doing in other algorithms. The main differences include:
 1. Instead of storing the history of outcomes, we store the history of the values of `alpha` and `beta`;
@@ -809,21 +801,20 @@ Due to these changes, we also need a new function for visualizing the `history` 
 
 ```python
 def bb_plot_history(
-    history: list,
-    prob_true: list,
-    k = -1,
+        history: list,
+        prob_true: list,
+        k=-1,
 ):
-
     x = np.linspace(0, 1, 100)
     legend_str = [[]] * len(prob_true)
-    plt.figure(figsize=(20,5))
-    
+    plt.figure(figsize=(20, 5))
+
     for i in range(len(prob_true)):
-      a = history[0][k][i]
-      b = history[1][k][i]
-      y = beta.pdf(x, a, b)
-      legend_str[i] = f'{prob_true[i]}, alpha: {a}, beta: {b}'
-      plt.plot(x, y)
+        a = history[0][k][i]
+        b = history[1][k][i]
+        y = beta.pdf(x, a, b)
+        legend_str[i] = f'{prob_true[i]}, alpha: {a}, beta: {b}'
+        plt.plot(x, y)
 
     plt.legend(legend_str)
 ```
@@ -859,24 +850,18 @@ Two differences between `Thompson Sampling` and the other algorithms we have dis
 
 ## Comparing the Algorithms
 
-It is important to compare the five algorithms in different settings. Following Sutton and Barto (2020), I conduct a 5-armed testbed. The testbed involve many runs, say 2,000. It then calculates the proportion of the bandit with the highest win rate was picked in each round. To implement the testbest, I first revise the `BayesianAB()` class to allow for the number of visitors, $N$, as an input. Then I add a list when `BayesianAB` is initialized to store the chosen bandit in each round:
-
-```python
-self.history_bandit = [] 
-```
-
-Then in the following functions/methods:
+It is important to compare the five algorithms in various settings. Following Sutton and Barto (2020), I conduct a 5-armed testbed. The idea of the testbed is to run the algorithms many times, say 2,000, then calculates the success rate, which is the percentage that the best bandit was picked in each round. For example, suppose we run the `Epsilon Greedy` algorithm 2,000 times with different win rates. We look at the bandit picked on the 100th visitor and found that, out of the 2,000 runs the best bandit was picked 800 times. Then at the 100th round/visitor, the success rate was 0.4. When we developed the `BayesianAB()` class, we were already anticipating the implementation of the testbed. Specifically, in the following functions/methods:
 * `update()`
 * `gradient_bandit()`
 * `bayesian_bandits()`
 
-I added the line
+there is
 
 ```python
 self.history_bandit.append(i)
 ```
 
-toward the end. With these changes, the algorithms now also records and saves the chosen bandit in each round (or for each visitor). Lastly, I also add three parameters, `p_max`, `p_diff`, and `p_min`, so that the `BayesianAB()` class can generate different win rates. Once these steps are done, I write a new script to run the testbed:
+which records the which bandit was picked at each round. The parameters `p_max`, `p_diff`, and `p_min` also allow the `BayesianAB()` class to generate different win rates. We will now develop a script to implement the testbed where the `BayesianAB()` class is imported and called:
 
 ```python
 import numpy as np
@@ -896,8 +881,8 @@ N = 10001
 M = 2000
 
 
-def worker(algo, N_bandits, N, p_max, p_diff, p_min, n):
-    bayesianab_instance = BayesianAB(N_bandits, N, p_max, p_diff, p_min)
+def worker(algo, number_of_bandits, number_of_trials, p_max, p_diff, p_min, n):
+    bayesianab_instance = BayesianAB(number_of_bandits, number_of_trials, p_max, p_diff, p_min)
     getattr(bayesianab_instance, algo)()
     return bayesianab_instance.history_bandit
 
@@ -925,8 +910,8 @@ def monte_carlo(
 
 def run_monte_carlo(
         algos,
-        M,
-        N,
+        m,
+        n,
         p_values,
 ):
     trials = {}
@@ -935,8 +920,8 @@ def run_monte_carlo(
     for i in range(len(p_values)):
         print(f'The p_values are {p_values[i]}')
         trials[f'p{i}'] = monte_carlo(algos,
-                                      M,
-                                      N,
+                                      m,
+                                      n,
                                       p_values[i][0],
                                       p_values[i][1],
                                       p_values[i][2],)
@@ -944,10 +929,10 @@ def run_monte_carlo(
     for i in range(len(p_values)):
         df = pd.DataFrame()
         for j in algos:
-            list = [0] * (N - 1)
+            lst = [0] * (N - 1)
             for k in range(M):
-                list = np.array(list) + np.array([1 if x == 4 else 0 for x in trials[f'p{i}'][j][k]])
-            df[j] = (list / M).tolist()
+                lst = np.array(lst) + np.array([1 if x == 4 else 0 for x in trials[f'p{i}'][j][k]])
+            df[j] = (lst / M).tolist()
 
         df_all[f'p{i}'] = df.copy()
 
@@ -972,7 +957,7 @@ def plot_monte_carlo(
             sns.lineplot(x=df_all[key].index, y=df_all[key][algos[i]], linewidth=0.5, color=colors[i], ax=ax)
 
         ax.set_ylabel('')
-        ax.set_title(p_values[n * 3 + m])
+        ax.set_title(prob_list[n * 3 + m])
         ax.set_xticks([])
 
         if m == 2:
@@ -994,60 +979,63 @@ def plot_monte_carlo(
 
 
 if __name__ == "__main__":
-    algos = ['epsilon_greedy', 'optim_init_val', 'ucb1', 'gradient_bandit', 'bayesian_bandits']
-    p_values = [[.35, .1, .1], [.35, .05, .1], [.35, .01, .1],
-                [.75, .1, .1], [.75, .05, .1], [.75, .01, .1],
-                [.75, .1, .62], [.75, .05, .62], [.75, .01, .62],
-                [.95, .1, .82], [.95, .05, .82], [.95, .01, .82],
-                ]
+    algorithms = ['epsilon_greedy', 'optim_init_val', 'ucb1', 'gradient_bandit', 'bayesian_bandits']
+    prob_list = [[.35, .1, .1], [.35, .05, .1], [.35, .01, .1],
+                 [.75, .1, .1], [.75, .05, .1], [.75, .01, .1],
+                 [.75, .1, .62], [.75, .05, .62], [.75, .01, .62],
+                 [.95, .1, .82], [.95, .05, .82], [.95, .01, .82],
+                 ]
 
-    df_all = run_monte_carlo(algos, M, N, p_values)
+    results_df = run_monte_carlo(algorithms, M, N, prob_list)
 
-    plot_monte_carlo(df_all, algos, 3, 4)
+    plot_monte_carlo(results_df, algorithms, 3, 4)
 ```
 
-For parallelization, I load the `multiprocessing` library. I also import the `BayesianAB` class from the script written by the five algorithms. In the above, the `worker()` function defines the task (or worker) for parallelization. The main function, which is named `monte_carlo()`, accepts six arguments:
-1. `algos` is a list of algorithms. The algorithms should match the names given as methods in the `BayesianAB()` method. In our case, we have
+Some explanations may be instructive. First, since we will be calling the same functions many times, I decided to use parallelization, which is through the `multiprocessing` library. In the script, the `worker()` function defines the task (or worker) for parallelization. The core function in the script, `monte_carlo()`, accepts six arguments:
+1. `algos` contains a list of algorithms. The algorithms should match the names given as methods in the `BayesianAB()` class. In our case, we have
 ```python
-algos = ['epsilon_greedy', 'optim_init_val', 'ucb1', 'gradient_bandit', 'bayesian_bandits']
+algorithms = ['epsilon_greedy', 'optim_init_val', 'ucb1', 'gradient_bandit', 'bayesian_bandits']
 ```
-2. `m` is the number of simulations/trials to run. The default value si 500. We will be running 2000 simulations. For each round/visitor, we will calculate the percentage that the bandit with the highest win rate was picked among these 2000 simulations;
-3. `n` is the number of rounds/visitors in each simulation. A default number of 10001 means it will have 10000 visitors;
+2. `m` is the number of simulations/trials to run. The default value is 500. We will actually be running 2000 simulations;
+3. `n` is the number of rounds/visitors in each simulation. A default value of 10001 means it will have 10000 visitors;
 4. `p_max` is the highest win rate;
 5. `p_diff` is the smallest possible difference between the highest win rate and the second highest win rate;
 6. `p_min` is the lowest possible win rate.
 
-We will run simulations with 12 different combinations of `p_max`, `p_diff`, and `p_min`, given in the following `p_values` list:
+We will run simulations with 12 different combinations of `p_max`, `p_diff`, and `p_min`, given in the following list:
+
 ```
-    p_values = [[.35, .1, .1], [.35, .05, .1], [.35, .01, .1],
-                [.75, .1, .1], [.75, .05, .1], [.75, .01, .1],
-                [.75, .1, .62], [.75, .05, .62], [.75, .01, .62],
-                [.95, .1, .82], [.95, .05, .82], [.95, .01, .82],
-                ]
+    prob_list = [[.35, .1, .1], [.35, .05, .1], [.35, .01, .1],
+                 [.75, .1, .1], [.75, .05, .1], [.75, .01, .1],
+                 [.75, .1, .62], [.75, .05, .62], [.75, .01, .62],
+                 [.95, .1, .82], [.95, .05, .82], [.95, .01, .82],
+                 ]
 ```
 
-The `run_monte_carlo()` function calls the `monte_carlo()` function, then processes the results and calculate the percentage of the best bandit being picked in each round. The results are stored in a `dictionary` named `df_all`.
+The `run_monte_carlo()` function calls the `monte_carlo()` function, then processes the results and calculate success rate in each round. The results are stored in a `dictionary` named `df_all`.
 
-The `plot_monte_carlo()` function, as the name suggests, plots the results in a 4-by-3 grid. Each subplot corresponds to a certain combination of `[p_max, p_diff, p_min]` which is given in the titles of the subplots.
+The `plot_monte_carlo()` function, as the name suggests, plots the results in a 4-by-3 grid. Each subplot corresponds to a certain combination of `[p_max, p_diff, p_min]` which is the titles of the subplots.
 
-Here is the resulted plot with 2000 simulations each with 10000 visitors:
+Here is the resulted plot with 2,000 simulations, each with 10,000 rounds/visitors:
 
 ![Comparison](comparison.png)
 
-Several results stand out:
-1. `Thompson Sampling` and `Gradient Bandit` both perform consistent good. `Thompson Sampling` has the best overall performance, picking the best bandit in over 90% of the simulations at the end of the 10000 rounds. It also edges out `Gradient Bandit` when `p_diff` is 0.01, which makes it possible to have a close second-best bandit;
-2. The `Epsilon Greedy` algorithm performs consistently regardless of win rate settings, but at a poor 20% rate of picking the best bandit. This may be partly due to a relatively high value of epsilon at 0.5;
-3. The algorithm that is the most sensitive to win rate settings is `UCB1`. `UCB1`'s performance when the win rate of the best bandit is at 0.95 can be puzzling. It can be due to a combination of the algorithm itself and a relatively high `c` value. When the best bandit has a win rate of 0.95, and especially when there exists a close second-best, the "bonus" that `UCB1` can give a bandit is small. After all, the win rate is not to be exceeding 1. As a result, `UCB1` has a hard time distinguishing between the best bandits and others that are almost as good.
+Several results are worth mentioning:
+1. `Thompson Sampling` and `Gradient Bandit` both do consistently well. `Thompson Sampling` has the best overall performance, picking the best bandit in over 90% of the simulations at the end of 10,000 rounds. It also edged out `Gradient Bandit` when `p_diff` is 0.01, which means there can be a close second-best bandit;
+2. The `Epsilon Greedy` algorithm performs consistently regardless of win rate settings, but at a poor 20% success rate at picking the best bandit. This may be partly due to a relatively high value of epsilon at 0.5;
+3. The algorithm that is the most sensitive to win rate settings is `UCB1`. When the win rate of the best bandit is at 0.95, `UCB1`'s performance can be puzzling. In part, it may be a the result of a relatively high `c` value, since the default is 1. Intuitively, when the best bandit has a win rate of 0.95, and especially when there exists a close second-best, the "bonus" that `UCB1` can give to a bandit is small. After all, the win rate is not to be exceeding 1. As a result, `UCB1` has a hard time distinguishing between the best bandits and others that are almost as good. It should be noted that `UCB` (not `UCB1`) has the best performance in the testbed in Sutton and Barto (2020), but the authors also acknowledged that `UCB`'s application beyond the Multi-Armed Bandit problem is limited (in the context of reinforcement learning).
 
-## Summary, Extensions, and Applications
+## Summary and Extensions
 
-In this article, I have introduced you to five algorithms that can be used in *real-time* A/B Testing and Randomized Controlled Trials. Compared to traditional methods that often involve the use of some form of Power Analysis to pre-determine minimum sample size, the algorithms introduced in this article have one additional advantage: They can be easily extended to experiments with more than 2 choices/versions/bandits, as illustrated in an example with 5 bandits throughout this article.
+In this article, I have introduced five algorithms that can be used in *real-time* A/B Testing and Randomized Controlled Trials. Compared to traditional methods that often use Power Analysis to determine the minimum sample size, algorithms introduced in this article have one additional advantage: They can be easily extended to experiments with more than 2 choices/versions/bandits, as shown throughout the article.
 
-The algorithms introduced in this article are known as algorithms for the `Multi-Armed Bandit` problem, which is considered as the simplest form of **reinforcement learning**. We will come back to more complex reinforcement learning algorithms and problems in another article.
+The algorithms introduced in this article are known as algorithms for the `Multi-Armed Bandit` problem, which is considered as the simplest form of **reinforcement learning**. We will come back to more reinforcement learning algorithms and problems in later articles.
 
-It is worth mentioning two extensions of the `Multi-Armed Bandit` problem: `Non-stationary Bandit` and `Contextual Bandit`. Non-stationary Bandit means that the win rates change over time. One particular algorithm that we introduced in this article is known to do badly in non-stationary bandit problems: `Optimistic Initial Values`. The reason is obvious: `Optimistic Initial Values` algorithm is designed to explore aggressively in the beginning. When the win rates change after this initial exploration stage has ended, it is hard for it to change course.
+Two extensions of the `Multi-Armed Bandit` problem should be mentioned: `Non-stationary Bandit` and `Contextual Bandit`. Non-stationary Bandit is the situation in which that the win rates change over time. One particular algorithm that we introduced in this article is known to do badly in non-stationary bandit problems: `Optimistic Initial Values`. The reason is obvious. `Optimistic Initial Values` algorithm is designed to explore aggressively in the beginning. When the win rates change after this initial exploration stage has ended, it is hard for it to change course.
 
-`Contextual Bandit`, as the name suggests, means that there exists contextual information to be exploited. In a simple example, may be a casino has slot machines in different colors, and colors are not given at random: the green machines have higher win rate than the red ones. A new player would not know that at first, but as time goes on and if the player has explored sufficiently, it is possible to figure out the association between color and win rate, and hence makes choices accordingly. This is also why `Contextual Bandit` is also known as `Associative Search`. We will come back to this in another article, because `Contextual Bandit` algorithms can be used in regression problems.
+As the name suggested, `Contextual Bandit` means that there exists contextual information to be used when making a decision. In a simple example, a casino may have slot machines in different colors, and the colors are not random: the green machines have higher win rates than the red ones. A new player would not know that information at first, but as time goes on and if the player has explored enough, it is possible to figure out the *association* between color and win rate, and hence decisions are made accordingly. This is also why `Contextual Bandit` is also known as `Associative Search`. We will come back to this in another article, since `Contextual Bandit` algorithms can be used in regression problems.
+
+(Visit my GitHub for the latest Python scripts: https://github.com/DataHurdler/Econ-ML/tree/main/Multi-Arm%20Bandits)
 
 ## References
 
