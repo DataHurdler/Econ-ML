@@ -15,8 +15,8 @@ N = 10001
 M = 2000
 
 
-def worker(algo, N_bandits, N, p_max, p_diff, p_min, n):
-    bayesianab_instance = BayesianAB(N_bandits, N, p_max, p_diff, p_min)
+def worker(algo, number_of_bandits, number_of_trials, p_max, p_diff, p_min, n):
+    bayesianab_instance = BayesianAB(number_of_bandits, number_of_trials, p_max, p_diff, p_min)
     getattr(bayesianab_instance, algo)()
     return bayesianab_instance.history_bandit
 
@@ -44,8 +44,8 @@ def monte_carlo(
 
 def run_monte_carlo(
         algos,
-        M,
-        N,
+        m,
+        n,
         p_values,
 ):
     trials = {}
@@ -54,8 +54,8 @@ def run_monte_carlo(
     for i in range(len(p_values)):
         print(f'The p_values are {p_values[i]}')
         trials[f'p{i}'] = monte_carlo(algos,
-                                      M,
-                                      N,
+                                      m,
+                                      n,
                                       p_values[i][0],
                                       p_values[i][1],
                                       p_values[i][2],)
@@ -63,10 +63,10 @@ def run_monte_carlo(
     for i in range(len(p_values)):
         df = pd.DataFrame()
         for j in algos:
-            list = [0] * (N - 1)
+            lst = [0] * (N - 1)
             for k in range(M):
-                list = np.array(list) + np.array([1 if x == 4 else 0 for x in trials[f'p{i}'][j][k]])
-            df[j] = (list / M).tolist()
+                lst = np.array(lst) + np.array([1 if x == 4 else 0 for x in trials[f'p{i}'][j][k]])
+            df[j] = (lst / M).tolist()
 
         df_all[f'p{i}'] = df.copy()
 
@@ -91,7 +91,7 @@ def plot_monte_carlo(
             sns.lineplot(x=df_all[key].index, y=df_all[key][algos[i]], linewidth=0.5, color=colors[i], ax=ax)
 
         ax.set_ylabel('')
-        ax.set_title(p_values[n * 3 + m])
+        ax.set_title(prob_list[n * 3 + m])
         ax.set_xticks([])
 
         if m == 2:
@@ -113,13 +113,13 @@ def plot_monte_carlo(
 
 
 if __name__ == "__main__":
-    algos = ['epsilon_greedy', 'optim_init_val', 'ucb1', 'gradient_bandit', 'bayesian_bandits']
-    p_values = [[.35, .1, .1], [.35, .05, .1], [.35, .01, .1],
-                [.75, .1, .1], [.75, .05, .1], [.75, .01, .1],
-                [.75, .1, .62], [.75, .05, .62], [.75, .01, .62],
-                [.95, .1, .82], [.95, .05, .82], [.95, .01, .82],
-                ]
+    algorithms = ['epsilon_greedy', 'optim_init_val', 'ucb1', 'gradient_bandit', 'bayesian_bandits']
+    prob_list = [[.35, .1, .1], [.35, .05, .1], [.35, .01, .1],
+                 [.75, .1, .1], [.75, .05, .1], [.75, .01, .1],
+                 [.75, .1, .62], [.75, .05, .62], [.75, .01, .62],
+                 [.95, .1, .82], [.95, .05, .82], [.95, .01, .82],
+                 ]
 
-    df_all = run_monte_carlo(algos, M, N, p_values)
+    results_df = run_monte_carlo(algorithms, M, N, prob_list)
 
-    plot_monte_carlo(df_all, algos, 3, 4)
+    plot_monte_carlo(results_df, algorithms, 3, 4)

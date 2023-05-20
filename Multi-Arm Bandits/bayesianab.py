@@ -3,29 +3,31 @@ import pandas as pd
 import random
 import matplotlib.pyplot as plt
 import seaborn as sns
-import warnings
 from scipy.stats import beta
 
 # set the number of bandits
 N_bandits = 5
 # set the number of trials
+# only in demonstration
 N = 100000
 # set the number of trials to try all bandits
 N_start = 50
 
 
 class BayesianAB:
+    """
+    This is docstring
+    """
     def __init__(
             self,
             number_of_bandits: int = 2,
-            N: int = 100000,
+            number_of_trials: int = 100000,
             p_max: float = .75,
             p_diff: float = .05,
-            p_min: float = .1
+            p_min: float = .8
     ):
         if p_min > p_max - p_diff:
-            warnings.warn("Condition p_min < p_max - p_diff not satisfied. Exit...", UserWarning)
-            quit()
+            raise ValueError("Condition p_min < p_max - p_diff not satisfied. Exit...")
 
         self.prob_true = [0] * number_of_bandits  # only in demonstration
         self.prob_win = [0] * number_of_bandits
@@ -38,7 +40,8 @@ class BayesianAB:
         # preference and pi are for gradient_bandit only
         self.pref = [0] * number_of_bandits
         self.pi = [1 / number_of_bandits] * number_of_bandits
-        self.N = N
+        # number of trials/visitors
+        self.N = number_of_trials
 
         # set the last bandit to have a win rate of 0.75 and the rest lower
         # only in demonstration
@@ -59,7 +62,7 @@ class BayesianAB:
             self,
             i,
             k,
-    ):
+    ) -> None:
         outcome = self.pull(i)
         # may use a constant discount rate to discount past
         self.prob_win[i] = (self.prob_win[i] * k + outcome) / (k + 1)
@@ -80,7 +83,6 @@ class BayesianAB:
             if random.random() < epsilon:
                 i = random.randrange(0, len(self.prob_win))
             else:
-                # find index of the largest value in prob_win
                 i = np.argmax(self.prob_win)
 
             self.update(i, k)
@@ -98,7 +100,6 @@ class BayesianAB:
         self.history.append(self.prob_win.copy())
 
         for k in range(1, self.N):
-            # find index of the largest value in prob_win
             i = np.argmax(self.prob_win)
 
             self.update(i, k)
@@ -114,11 +115,9 @@ class BayesianAB:
 
         self.history.append(self.prob_win.copy())
         bandit_count = [0.0001] * len(self.prob_win)
-        # bound = [0] * len(self.prob_win)
 
         for k in range(1, self.N):
-            bound = self.prob_win + c * np.sqrt(2 * np.log(k) / bandit_count)
-            # find index of the largest value in bound
+            bound = self.prob_win + c * np.sqrt(np.divide(2 * np.log(k), bandit_count))
             i = np.argmax(bound)
 
             self.update(i, k)
@@ -174,16 +173,6 @@ class BayesianAB:
         return self.history
 
     ####################
-    # bayesian_bandits sample
-    def bb_sample(
-            self,
-            a: int,  # alpha
-            b: int,  # beta
-            sample_size: int = 10,
-    ):
-
-        return np.random.beta(a, b, sample_size)
-
     # bayesian_bandits update
     def bb_update(
             self,
@@ -193,7 +182,6 @@ class BayesianAB:
     ):
 
         outcome = self.pull(i)
-        # may use a constant discount rate to discount past
         a[i] += outcome
         b[i] += 1 - outcome
         self.count[i] += 1
@@ -215,7 +203,7 @@ class BayesianAB:
             sample_max = []
 
             for m in range(len(self.prob_true)):
-                m_max = np.max(self.bb_sample(self.alpha[m], self.beta[m], sample_size))
+                m_max = np.max(np.random.beta(self.alpha[m], self.beta[m], sample_size))
                 sample_max.append(m_max.copy())
 
             i = np.argmax(sample_max)
@@ -229,15 +217,14 @@ class BayesianAB:
         return self.history
 
 
-# This cell defines functions to plot history. Do not change this cell.
-
+# The following functions are used to plot history
 def plot_history(
         history: list,
         prob_true: list,
         col=2,
         k=N,
 ):
-    if type(history[0][0]) == list:  # to accommodate gradient bandit
+    if type(history[0][0]) == list:  # To accommodate gradient bandit
         df_history = pd.DataFrame([arr[col] for arr in history][:k])
     else:
         df_history = pd.DataFrame(history[:k])
