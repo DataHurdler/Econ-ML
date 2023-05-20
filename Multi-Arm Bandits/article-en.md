@@ -1,13 +1,14 @@
+<!-- omit in toc -->
 Randomized Controlled Trial, A/B/N Testing, and Multi-Armed Bandit Algorithms
 =============================================================
 
-**Author:** *Zijun Luo*
+*Zijun Luo*
 
 ## Introduction
 
 Randomized Controlled Trial (RCT) is the gold standard for establishing causality in experimental methods. It is used widely in clinical trials for new drugs or field experiments in social sciences and economics. In business, especially e-commerce, a related concept is A/B/N Testing. The main idea of RCT and A/B/N test is straightforward: individuals are randomly divided into groups to receive different treatments. Afterwards treatments, outcomes are being valuated and compared in order to find out which treatment works better/best. In RCT, a control group, where individuals receive a "placebo", is usually included. Note that placebo should be considered as a type of treatment too and individuals who receive a placebo are not getting "nothing". A placebo is something that has no therapeutic effect, i.e., it is not designed to cure a disease or an illness. But it can nevertheless positively impact the well-being of individuals who have received it, if due to nothing but psychological effects. As a result, it would be rather wrong to expect "no effect" from the the controlled group that receives the placebo in an RCT.
 
-In the rest of this article, I will be using A/B/N test as the example because I want to stay away from the nitty-gritty details of RCT. We will come back to RCT toward the end. I am using "A/B/N" to include tests with more than 2 versions. If you are only comparing two versions, it is an A/B test.
+In the rest of this article, I will be using A/B/N test as the example because I want to stay away from the nitty-gritty details of RCT. I am using "A/B/N" to include tests with more than 2 versions. If you are only comparing two versions, it is an A/B test.
 
 When I was interviewing for a data scientist job in 2022, the following was one of the interview questions: We are going to run an A/B test on a client's website. How long do we need to run the experiment for? Back then I knew about how to find minimum sample size based on hypothesis testing in Statistics, so I framed my answer that way. But I stopped in the middle while answering the question. Something I did not think seriously enough about popped into my head: how would I know the standard deviation, one of the required values to carry out the calculation for minimum sample size, before we even run the experiment? My interview went downhill from there. Needless to say, I did not get the job. However, the interviewer was nice enough to tell me that I should look into "power analysis".
 
@@ -1043,4 +1044,3 @@ As the name suggested, `Contextual Bandit` means that there exists contextual in
 * http://incompleteideas.net/book/the-book-2nd.html (Chapter 2)
 * https://en.m.wikipedia.org/wiki/Multi-armed_bandit
 * https://www.tensorflow.org/agents/tutorials/intro_bandit
-* https://www.optimizely.com/optimization-glossary/multi-armed-bandit/
