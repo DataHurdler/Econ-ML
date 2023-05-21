@@ -239,6 +239,8 @@ def plot_history(
     custom_legend = [plt.Line2D([], [], color=colors[i], label=prob_true[i]) for i in range(len(prob_true))]
     plt.legend(handles=custom_legend)
 
+    plt.tight_layout()
+
 
 def bb_plot_history(
         history: list,
@@ -257,6 +259,7 @@ def bb_plot_history(
         plt.plot(x, y)
 
     plt.legend(legend_str)
+    plt.tight_layout()
 
 
 if __name__ == "__main__":
@@ -269,11 +272,11 @@ if __name__ == "__main__":
 
     # plot the entire experiment history
     plot_history(history=eg.history, prob_true=eg.prob_true)
-    # plt.savefig("eg.png")
+    plt.savefig("eg.png")
 
     # plot history of epsilon greedy after 100 pulls
     plot_history(history=eg.history, prob_true=eg.prob_true, k=100)
-    # plt.savefig("eg_100.png")
+    plt.savefig("eg_100.png")
 
     # optimistic initial values
     oiv = BayesianAB(N_bandits)

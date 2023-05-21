@@ -324,12 +324,12 @@ print(f'Number of times each bandit was played: {eg.count}')
 Here, we call `epsilon_greedy()` with the default value for `epsilon`. This means the algorithm will explore half of the time. We also print out the true win rates, the expected win rates, and the number of times that each bandit was played. Here is the printed output from a particular run:
 
 ```
-The true win rates: [0.66, 0.19, 0.41, 0.47, 0.75]
-The observed win rates: [0.6626, 0.1125, 0.2569, 0.2425, 0.4193]
-Number of times each bandit was played: [60045, 9964, 9910, 10151, 9929]
+The true win rates: [0.37, 0.55, 0.67, 0.4, 0.75]
+The observed win rates: [0.2062, 0.3354, 0.6717, 0.1953, 0.5526]
+Number of times each bandit was played: [10200, 9945, 60001, 9789, 10064]
 ```
 
-In the above run, the best bandit was NOT the one that was selected the most. The second best bandit, with a 0.66 win rate, was picked about 60% of the time, as dictated by the value of `epsilon`. Such outcome is due to the fact that the bandit with a 0.66 win rate did well in the beginning. Since it is close enough to 0.75, the default win rate of the best bandit, random jumps to the bandit with the 0.75 win rate were not enough to "flip" the results.
+In the above run, the best bandit was NOT the one that was selected the most. The second best bandit, with a 0.67 win rate, was picked about 60% of the time, as dictated by the value of `epsilon`. Such outcome is due to the fact that the bandit with a 0.67 win rate did well in the beginning. Since it is close enough to 0.75, the default win rate of the best bandit, random jumps to the bandit with the 0.75 win rate were not enough to "flip" the results.
 
 Also note that the expected win rates have not converged to the true win rates except for the "chosen" one after 100,000 visitors. However, if the number of visitors approaches infinity, which means that each version would be picked infinite times, all win rates would converge to their true values. This, in turn, means that the best bandit would eventually overtake the second-best if the experiment runs *long enough*. In other words, `Epsilon Greedy` guarantees the identification of the best bandit as $n$ approaches infinity.
 
@@ -372,7 +372,7 @@ Here is the output from the above run:
 
 ![Epsilon Greedy](eg.png)
 
-We can also get the visualization for the first 100 visitors, which shows that the first bandit, the a 0.66 win rate, jumped ahead early:
+We can also get the visualization for the first 100 visitors, which shows that the third bandit, the a 0.67 win rate, jumped ahead early:
 
 ```python
 plot_history(history=eg.history, prob_true=eg.prob_true, k=100)
