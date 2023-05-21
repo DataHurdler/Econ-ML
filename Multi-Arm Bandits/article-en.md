@@ -703,7 +703,7 @@ There are several reasons why the `Gradient Bandit` algorithm is one of my favor
 
 ## Thompson Sampling (Bayesian Bandits)
 
-`Thompson Sampling`, or `Bayesian Bandits`, takes another (big) step forward. In our discussion on `Upper Confidence Bound`, we acknowledged the fact that using only the expected rate to represent the performance of a bandit is not accurate. To tackle this, `UCB1` adds a "bonus": the bonus is smaller for the bandits that were played more, and larger for the bandits that were played less. Then in our discussion on `Gradient Bandit`, each bandit's chance of being picked is described by a soft-max distribution.
+`Thompson Sampling`, or `Bayesian Bandits`, takes another (big) step forward. In our discussion on `Upper Confidence Bound`, we acknowledged the fact that using only the expected win rate to represent the performance of a bandit is not accurate. To tackle this, `UCB1` adds a "bonus": the bonus is smaller for the bandits that were played more, and larger for the bandits that were played less. Then in our discussion on `Gradient Bandit`, each bandit's chance of being picked is described by a soft-max distribution.
 
 To push these ideas further, and as the name `Thompson Sampling` has hinted, we ask if we could construct a probability distribution to describe the expected win rates of all the bandits. As it turns out, this is possible, as everything, including parameters, are considered random variables in Bayesian Statistics. For example, with Normal Distribution, we often speak about fixed values of mean and variance. But in Bayesian Statistics, the mean and variance of a Normal Distribution are two random variables and they can be described by probability distributions.
 
@@ -732,13 +732,13 @@ Since `Thompson Sampling` is mechanical different from the previous algorithms, 
 
 ```
 loop:
-    bb_sample() = sampling from Beta function for bandit b
+    sampling from Beta function for bandit b
     j = argmax(b.sample() for b bandits)
-    x = T/F from playing bandit j
+    x = reward (1 or 0) from playing bandit j
     bandit[j].bb_update(x)
 ```
 
-The two functions that need to be added are `bb_sample()` and `bb_update()`. Here is the full `Python` implementation:
+The function that needs to be added is `bb_update()`. Here is the full `Python` implementation:
 
 ```python
 from scipy.stats import beta
