@@ -851,7 +851,7 @@ Two differences between `Thompson Sampling` and the other algorithms we have dis
 
 ## Comparing the Algorithms
 
-It is important to compare the five algorithms in various settings. Following Sutton and Barto (2020), I conduct a 5-armed testbed. The idea of the testbed is to run the algorithms many times, say 2,000, then calculates the success rate, which is the percentage that the best bandit was picked in each round. For example, suppose we run the `Epsilon Greedy` algorithm 2,000 times with different win rates. We look at the bandit picked on the 100th visitor and found that, out of the 2,000 runs the best bandit was picked 800 times. Then at the 100th round/visitor, the success rate was 0.4. When we developed the `BayesianAB()` class, we were already anticipating the implementation of the testbed. Specifically, in the following functions/methods:
+It is important to compare the five algorithms in various settings. Following Sutton and Barto (2020), I conduct a 5-armed testbed. The idea of the testbed is to run the algorithms many times, say 2,000, then calculates the success rate, which is the percentage that the best bandit was picked in each round. For example, suppose we run the `Epsilon Greedy` algorithm 2,000 times with different win rates. We look at the bandit picked on the 100th visitor and found that, out of the 2,000 runs the best bandit was picked 800 times. Then at the 100th round/visitor, the success rate was 0.4. When we developed the `BayesianAB` class, we were already anticipating the implementation of the testbed. Specifically, in the following functions/methods:
 * `update()`
 * `gradient_bandit()`
 * `bayesian_bandits()`
@@ -862,7 +862,7 @@ there is
 self.history_bandit.append(i)
 ```
 
-which records the which bandit was picked at each round. The parameters `p_max`, `p_diff`, and `p_min` also allow the `BayesianAB()` class to generate different win rates. We will now develop a script to implement the testbed where the `BayesianAB()` class is imported and called:
+which records the which bandit was picked at each round. The parameters `p_max`, `p_diff`, and `p_min` also allow the `BayesianAB` class to generate different win rates. We will now develop a script to implement the testbed where the `BayesianAB` class is imported and called:
 
 ```python
 import numpy as np
@@ -1040,7 +1040,7 @@ As the name suggested, `Contextual Bandit` means that there exists contextual in
 
 ## References
 
-* https://www.udemy.com/course/*bayesian-machine-learning-in-python-ab-testing/
+* https://www.udemy.com/course/bayesian-machine-learning-in-python-ab-testing/
 * http://incompleteideas.net/book/the-book-2nd.html (Chapter 2)
 * https://en.m.wikipedia.org/wiki/Multi-armed_bandit
 * https://www.tensorflow.org/agents/tutorials/intro_bandit
