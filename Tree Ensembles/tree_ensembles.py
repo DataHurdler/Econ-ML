@@ -36,7 +36,7 @@ class TreeModels:
 
         self.num_features = np.random.rand(n_individuals, n_num_features + 2)
 
-        cat_list = random.choices(string.ascii_uppercase, k=5)
+        cat_list = random.choices(string.ascii_uppercase, k=6)
         self.cat_feature = np.random.choice(cat_list, size=(n_individuals, 1))
 
         self.df = pd.DataFrame(self.num_features[:, :-2])
@@ -44,8 +44,10 @@ class TreeModels:
         self.df = pd.get_dummies(self.df, prefix=['cat'])
         self.df.columns = self.df.columns.astype(str)
 
-        kmeans = KMeans(n_clusters=n_group, n_init="auto").fit(self.num_features)
-        self.df['target'] = kmeans.labels_
+        cat_columns = self.df.filter(like='cat')
+        kmeans1 = KMeans(n_clusters=n_group, n_init="auto").fit(cat_columns)
+        kmeans2 = KMeans(n_clusters=n_group, n_init="auto").fit(self.num_features)
+        self.df['target'] = np.floor((kmeans1.labels_ + kmeans2.labels_)/2)
 
         numerical_columns = [str(i) for i in range(n_num_features)]
         for column in numerical_columns:
@@ -63,6 +65,7 @@ class TreeModels:
             self,
             clf,
     ):
+        print(clf)
         clf.fit(self.X_train, self.y_train)
         self.y_pred = clf.predict(self.X_test)
 
