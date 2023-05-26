@@ -111,7 +111,7 @@ class BayesianAB:
             number_of_trials: int = 100000,
             p_max: float = .75,
             p_diff: float = .05,
-            p_min: float = .8
+            p_min: float = .1
     ):
         if p_min > p_max - p_diff:
             raise ValueError("Condition p_min < p_max - p_diff not satisfied. Exit...")
@@ -993,7 +993,7 @@ if __name__ == "__main__":
 ```
 
 Some explanations may be instructive. First, since we will be calling the same functions many times, I decided to use parallelization, which is through the `multiprocessing` library. In the script, the `worker()` function defines the task (or worker) for parallelization. The core function in the script, `monte_carlo()`, accepts six arguments:
-1. `algos` contains a list of algorithms. The algorithms should match the names given as methods in the `BayesianAB()` class. In our case, we have
+1. `algos` contains a list of algorithms. The algorithms should match the names given as methods in the `BayesianAB` class. In our case, we have
 ```python
 algorithms = ['epsilon_greedy', 'optim_init_val', 'ucb1', 'gradient_bandit', 'bayesian_bandits']
 ```

@@ -123,3 +123,4 @@ if __name__ == "__main__":
     results_df = run_monte_carlo(algorithms, M, N, prob_list)
 
     plot_monte_carlo(results_df, algorithms, 3, 4)
+    plt.show()
