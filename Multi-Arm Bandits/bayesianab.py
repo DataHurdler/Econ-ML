@@ -267,7 +267,7 @@ if __name__ == "__main__":
     eg = BayesianAB(N_bandits)
     print(f'The true win rates: {eg.prob_true}')
     eg_history = eg.epsilon_greedy(epsilon=0.5)
-    print(f'The observed win rates: {["{:.4f}".format(float(x)) for x in eg.prob_win]}')
+    print(f'The observed win rates: {[float("{:.4f}".format(x)) for x in eg.prob_win]}')
     print(f'Number of times each bandit was played: {eg.count}')
 
     # plot the entire experiment history
@@ -282,7 +282,7 @@ if __name__ == "__main__":
     oiv = BayesianAB(N_bandits)
     print(f'The true win rates: {oiv.prob_true}')
     oiv_history = oiv.optim_init_val(init_val=0.99)
-    print(f'The observed win rates: {["{:.4f}".format(float(x)) for x in oiv.prob_win]}')
+    print(f'The observed win rates: {[float("{:.4f}".format(x)) for x in oiv.prob_win]}')
     print(f'Number of times each bandit was played: {oiv.count}')
 
     # plot the entire experiment history
@@ -295,7 +295,7 @@ if __name__ == "__main__":
     ucb = BayesianAB(N_bandits)
     print(f'The true win rates: {ucb.prob_true}')
     ucb_history = ucb.ucb1()
-    print(f'The observed win rates: {["{:.4f}".format(float(x)) for x in ucb.prob_win]}')
+    print(f'The observed win rates: {[float("{:.4f}".format(x)) for x in ucb.prob_win]}')
     print(f'Number of times each bandit was played: {ucb.count}')
 
     # plot the entire experiment history
@@ -308,7 +308,7 @@ if __name__ == "__main__":
     gb = BayesianAB(N_bandits)
     print(f'The true win rates: {gb.prob_true}')
     gb_history = gb.gradient_bandit()
-    print(f'The observed win rates: {["{:.4f}".format(float(x)) for x in gb.prob_win]}')
+    print(f'The observed win rates: {[float("{:.4f}".format(x)) for x in gb.prob_win]}')
     print(f'Number of times each bandit was played: {gb.count}')
 
     # plot the entire experiment history
