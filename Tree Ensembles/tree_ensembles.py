@@ -2,11 +2,8 @@ import random
 import string
 import numpy as np
 import pandas as pd
-
 import matplotlib.pyplot as plt
-
 from sklearn.cluster import KMeans
-
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
@@ -15,7 +12,6 @@ from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
-
 import xgboost as xgb
 
 N_GROUP = 5
