@@ -29,6 +29,7 @@ class TreeModels:
             n_group: int = 5,
             n_individuals: int = 10000,
             n_num_features: int = 5,
+            numeric_only: bool = False,
     ):
         print(f'There are {n_individuals} individuals.')
         print(f'There are {n_group} choices.')
@@ -44,10 +45,14 @@ class TreeModels:
         self.df = pd.get_dummies(self.df, prefix=['cat'])
         self.df.columns = self.df.columns.astype(str)
 
-        cat_columns = self.df.filter(like='cat')
-        kmeans1 = KMeans(n_clusters=n_group, n_init="auto").fit(cat_columns)
-        kmeans2 = KMeans(n_clusters=n_group, n_init="auto").fit(self.num_features)
-        self.df['target'] = np.floor((kmeans1.labels_ + kmeans2.labels_)/2)
+        if numeric_only:
+            kmeans = KMeans(n_clusters=n_group, n_init="auto").fit(self.num_features)
+            self.df['target'] = kmeans.labels_
+        else:
+            cat_columns = self.df.filter(like='cat')
+            kmeans1 = KMeans(n_clusters=n_group, n_init="auto").fit(cat_columns)
+            kmeans2 = KMeans(n_clusters=n_group, n_init="auto").fit(self.num_features)
+            self.df['target'] = np.floor((kmeans1.labels_ + kmeans2.labels_)/2)
 
         numerical_columns = [str(i) for i in range(n_num_features)]
         for column in numerical_columns:
@@ -99,7 +104,7 @@ if __name__ == "__main__":
     # No interruption by plt.show()
     plt.ion()
 
-    tree = TreeModels(n_num_features=N_FEATURES)
+    tree = TreeModels(n_num_features=N_FEATURES, numeric_only=True)
 
     logit = LogisticRegression(max_iter=10000)
     tree.show_results(logit)
