@@ -14,103 +14,110 @@ N = 100000
 
 class BayesianAB:
     """
-    A class implementing various algorithms for solving the multi-armed bandit problem,
-    including epsilon-greedy, optimistic initial values, upper confidence bound (UCB1),
+    This class implements various algorithms for solving the Multi-Armed Bandit problem,
+    including epsilon-greedy, optimistic initial values, Upper Confidence Bound (UCB1),
     gradient bandit, and Bayesian bandits.
 
     Args:
-        number_of_bandits (int): The number of bandits in the problem. Default is 2.
-        number_of_trials (int): The number of trials/visitors. Default is 100000.
-        p_max (float): The maximum win rate for the bandits. Default is 0.75.
-        p_diff (float): The difference between the maximum and minimum win rates. Default is 0.05.
-        p_min (float): The minimum win rate for the bandits. Default is 0.1.
+        number_of_bandits (int): The number of bandits. Default is 2.
+        number_of_trials (int): The number of trials/visitors. Default is 100,000.
+        p_max (float): The maximum win probability for the last bandit. Default is 0.75.
+        p_diff (float): The difference between the win probabilities of the bandits. Default is 0.05.
+        p_min (float): The minimum win probability for the first (number_of_bandits - 1) bandits. Default is 0.1.
 
     Raises:
-        ValueError: If the condition p_min < p_max - p_diff is not satisfied.
+        ValueError: If p_min > p_max - p_diff, indicating an invalid configuration.
 
     Attributes:
-        prob_true (list): The true win probabilities of the bandits. Only used for demonstration.
-        prob_win (list): The estimated win probabilities of the bandits.
-        history (list): The history of win probability estimates over time.
-        history_bandit (list): The history of selected bandits over time (for Monte Carlo).
-        count (list): The number of times each bandit was selected. Only used for demonstration.
-        pref (list): The preference values for the bandits. Only used for gradient_bandit.
-        pi (list): The action probabilities for the bandits. Only used for gradient_bandit.
-        alpha (list): The alpha parameters of the Beta distribution for Bayesian bandits.
-        beta (list): The beta parameters of the Beta distribution for Bayesian bandits.
-        N (int): The number of trials/visitors.
-
-    Methods:
-        pull(i): Receives a random value of 0 or 1 for a specific bandit.
-        update(i, k): Updates the win probability estimate for a bandit after pulling the arm.
-        epsilon_greedy(epsilon): Implements the epsilon-greedy algorithm for bandit selection.
-        optim_init_val(init_val): Implements the optimistic initial values algorithm.
-        ucb1(c): Implements the Upper Confidence Bound (UCB1) algorithm.
-        gb_update(i, k, a): Updates the preference values and win probability estimate for the gradient bandit algorithm.
-        gradient_bandit(a): Implements the gradient bandit algorithm.
-        bb_update(a, b, i): Updates the alpha and beta parameters for Bayesian bandits.
-        bayesian_bandits(sample_size): Implements the Bayesian bandits algorithm.
+        prob_true (list): True win probabilities of the bandits (only used for demonstration).
+        prob_win (list): Estimated win probabilities of the bandits.
+        history (list): History of win probability estimates over time.
+        history_bandit (list): History of selected bandits over time (for Monte Carlo).
+        count (list): Number of times each bandit was selected (only used for demonstration).
+        pref (list): Preference values for the bandits (only used for gradient_bandit).
+        pi (list): Action probabilities for the bandits (only used for gradient_bandit).
+        alpha (list): Alpha parameters of the Beta distribution for Bayesian bandits.
+        beta (list): Beta parameters of the Beta distribution for Bayesian bandits.
+        N (int): Number of trials/visitors.
 
     """
+
     def __init__(
             self,
             number_of_bandits: int = 2,
             number_of_trials: int = 100000,
-            p_max: float = .75,
-            p_diff: float = .05,
-            p_min: float = .1
+            p_max: float = 0.75,
+            p_diff: float = 0.05,
+            p_min: float = 0.1
     ):
         if p_min > p_max - p_diff:
             raise ValueError("Condition p_min < p_max - p_diff not satisfied. Exit...")
 
-        self.prob_true = [0] * number_of_bandits  # only in demonstration
-        self.prob_win = [0] * number_of_bandits
-        self.history = []
-        self.history_bandit = []  # for Monte Carlo
-        self.count = [0] * number_of_bandits  # only in demonstration
-        # preference and pi are for gradient_bandit only
-        self.pref = [0] * number_of_bandits
-        self.pi = [1 / number_of_bandits] * number_of_bandits
-        # alpha and beta are for bayesian_bandits only
-        self.alpha = [1] * number_of_bandits
-        self.beta = [1] * number_of_bandits
-        # number of trials/visitors
-        self.N = number_of_trials
+        self.prob_true = [0] * number_of_bandits  # True win probabilities of the bandits (only used for demonstration)
+        self.prob_win = [0] * number_of_bandits  # Estimated win probabilities of the bandits
+        self.history = []  # History of win probability estimates over time
+        self.history_bandit = []  # History of selected bandits over time (for Monte Carlo)
+        self.count = [0] * number_of_bandits  # Number of times each bandit was selected (only used for demonstration)
+        self.pref = [0] * number_of_bandits  # Preference values for the bandits (only used for gradient_bandit)
+        self.pi = [1 / number_of_bandits] * number_of_bandits  # Action probabilities for the bandits (only used for gradient_bandit)
+        self.alpha = [1] * number_of_bandits  # Alpha parameters of the Beta distribution for Bayesian bandits
+        self.beta = [1] * number_of_bandits  # Beta parameters of the Beta distribution for Bayesian bandits
+        self.N = number_of_trials  # Number of trials/visitors
 
-        # set the last bandit to have a win rate of 0.75 and the rest lower
-        # only in demonstration
+        # Set the win rates for the bandits
         self.prob_true[-1] = p_max
         for i in range(0, number_of_bandits - 1):
             self.prob_true[i] = round(p_max - random.uniform(p_diff, p_max - p_min), 2)
 
-    # Receives a random value of 0 or 1
-    # only in demonstration
     def pull(
             self,
             i,
     ) -> bool:
+        """
+        Simulates pulling the arm of a bandit.
+
+        Args:
+            i (int): The index of the bandit.
+
+        Returns:
+            bool: True if the arm yields a win, False otherwise.
+        """
         return random.random() < self.prob_true[i]
 
-    # Updates the mean
     def update(
             self,
             i,
             k,
     ) -> None:
+        """
+        Updates the win probability estimate for a bandit.
+
+        Args:
+            i (int): The index of the bandit.
+            k (int): The trial/visitor number.
+
+        Returns:
+            None
+        """
         outcome = self.pull(i)
-        # may use a constant discount rate to discount past
         self.prob_win[i] = (self.prob_win[i] * k + outcome) / (k + 1)
         self.history.append(self.prob_win.copy())
-        self.history_bandit.append(i)  # for Monte Carlo
+        self.history_bandit.append(i)  # For Monte Carlo
         self.count[i] += 1
 
-    ####################
-    # epsilon greedy
     def epsilon_greedy(
             self,
             epsilon: float = 0.5,
     ):
+        """
+        Implements the epsilon-greedy algorithm.
 
+        Args:
+            epsilon (float): The exploration rate. Default is 0.5.
+
+        Returns:
+            list: The history of win probability estimates over time.
+        """
         self.history.append(self.prob_win.copy())
 
         for k in range(1, self.N):
@@ -123,13 +130,19 @@ class BayesianAB:
 
         return self.history
 
-    ####################
-    # optimistic initial values
     def optim_init_val(
             self,
             init_val: float = 0.99,
     ):
+        """
+        Implements the optimistic initial values algorithm.
 
+        Args:
+            init_val (float): The initial win probability estimate for all bandits. Default is 0.99.
+
+        Returns:
+            list: The history of win probability estimates over time.
+        """
         self.prob_win = [init_val] * len(self.prob_win)
         self.history.append(self.prob_win.copy())
 
@@ -140,13 +153,19 @@ class BayesianAB:
 
         return self.history
 
-    ####################
-    # upper confidence bound (UCB1)
     def ucb1(
             self,
             c=1,
     ):
+        """
+        Implements the Upper Confidence Bound (UCB1) algorithm.
 
+        Args:
+            c (float): The exploration parameter. Default is 1.
+
+        Returns:
+            list: The history of win probability estimates over time.
+        """
         self.history.append(self.prob_win.copy())
         bandit_count = [0.0001] * len(self.prob_win)
 
@@ -162,15 +181,23 @@ class BayesianAB:
 
         return self.history
 
-    ####################
-    # gradient_bandit update
     def gb_update(
             self,
             i,
             k,
             a,
     ):
+        """
+        Updates the preference values and win probability estimate for the gradient bandit algorithm.
 
+        Args:
+            i (int): The index of the bandit.
+            k (int): The trial/visitor number.
+            a (float): The step size.
+
+        Returns:
+            list: The updated preference values.
+        """
         outcome = self.pull(i)
         for z in range(len(self.pref)):
             if z == i:
@@ -182,15 +209,20 @@ class BayesianAB:
 
         return self.pref
 
-    # gradient bandit algorithm
     def gradient_bandit(
             self,
             a=0.2,
     ):
+        """
+        Implements the gradient bandit algorithm.
 
-        self.history.append([self.pi.copy(),
-                             self.pref.copy(),
-                             self.prob_win.copy()])
+        Args:
+            a (float): The step size. Default is 0.2.
+
+        Returns:
+            list: The history of [pi, pref, prob_win] over time.
+        """
+        self.history.append([self.pi.copy(), self.pref.copy(), self.prob_win.copy()])
 
         for k in range(1, self.N):
             self.pi = np.exp(self.pref) / sum(np.exp(self.pref))
@@ -199,22 +231,28 @@ class BayesianAB:
             self.pref = self.gb_update(i, k, a)
 
             self.count[i] += 1
-            self.history.append([self.pi.copy(),
-                                 self.pref.copy(),
-                                 self.prob_win.copy()])
-            self.history_bandit.append(i)  # for Monte Carlo
+            self.history.append([self.pi.copy(), self.pref.copy(), self.prob_win.copy()])
+            self.history_bandit.append(i)  # For Monte Carlo
 
         return self.history
 
-    ####################
-    # bayesian_bandits update
     def bb_update(
             self,
             a,
             b,
             i,
     ):
+        """
+        Updates the alpha and beta parameters for the Bayesian bandits.
 
+        Args:
+            a (list): The alpha parameters.
+            b (list): The beta parameters.
+            i (int): The index of the bandit.
+
+        Returns:
+            tuple: The updated alpha and beta parameters.
+        """
         outcome = self.pull(i)
         a[i] += outcome
         b[i] += 1 - outcome
@@ -222,30 +260,34 @@ class BayesianAB:
 
         return a, b
 
-    # Bayesian bandits
-    # For Bernoulli distribution, the conjugate prior is Beta distribution
     def bayesian_bandits(
             self,
             sample_size: int = 10,
     ):
+        """
+        Implements the Bayesian bandits algorithm.
 
+        Args:
+            sample_size (int): The number of samples used for estimating the maximum win probability.
+                Default is 10.
+
+        Returns:
+            list: The history of [a_hist, b_hist] over time.
+        """
         a_hist, b_hist = [], []
         a_hist.append(self.alpha.copy())
         b_hist.append(self.beta.copy())
 
         for k in range(1, self.N):
-            sample_max = []
+            max_samples = []
+            for i in range(len(self.alpha)):
+                samples = np.random.beta(self.alpha[i], self.beta[i], sample_size)
+                max_samples.append(max(samples))
 
-            for m in range(len(self.prob_true)):
-                m_max = np.max(np.random.beta(self.alpha[m], self.beta[m], sample_size))
-                sample_max.append(m_max.copy())
-
-            i = np.argmax(sample_max)
-
+            i = np.argmax(max_samples)
             self.alpha, self.beta = self.bb_update(self.alpha, self.beta, i)
             a_hist.append(self.alpha.copy())
             b_hist.append(self.beta.copy())
-            self.history_bandit.append(i)  # for Monte Carlo
 
         self.history = [a_hist, b_hist]
         return self.history
