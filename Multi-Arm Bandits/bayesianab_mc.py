@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import random
 import seaborn as sns
 from multiprocessing import Pool, cpu_count
 from functools import partial
@@ -113,6 +114,8 @@ def plot_monte_carlo(
 
 
 if __name__ == "__main__":
+    random.seed(42)
+
     algorithms = ['epsilon_greedy', 'optim_init_val', 'ucb1', 'gradient_bandit', 'bayesian_bandits']
     prob_list = [[.35, .1, .1], [.35, .05, .1], [.35, .01, .1],
                  [.75, .1, .1], [.75, .05, .1], [.75, .01, .1],

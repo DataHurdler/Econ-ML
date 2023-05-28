@@ -263,6 +263,8 @@ def bb_plot_history(
 
 
 if __name__ == "__main__":
+    random.seed(42)
+
     # epsilon greedy
     eg = BayesianAB(N_bandits)
     print(f'The true win rates: {eg.prob_true}')
@@ -272,11 +274,11 @@ if __name__ == "__main__":
 
     # plot the entire experiment history
     plot_history(history=eg.history, prob_true=eg.prob_true)
-    plt.savefig("eg.png")
+    # plt.savefig("eg.png")
 
     # plot history of epsilon greedy after 100 pulls
     plot_history(history=eg.history, prob_true=eg.prob_true, k=100)
-    plt.savefig("eg_100.png")
+    # plt.savefig("eg_100.png")
 
     # optimistic initial values
     oiv = BayesianAB(N_bandits)
