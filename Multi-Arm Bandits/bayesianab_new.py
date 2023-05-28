@@ -300,6 +300,18 @@ def plot_history(
         col=2,
         k=N,
 ):
+    """
+    Plots the history of bandit wins over time.
+
+    Args:
+        history (list): The history of bandit wins.
+        prob_true (list): The true probabilities of winning for each bandit.
+        col (int): The column index of the history to plot. Default is 2.
+        k (int): The number of time steps to plot. Default is N.
+
+    Returns:
+        None
+    """
     if type(history[0][0]) == list:  # To accommodate gradient bandit
         df_history = pd.DataFrame([arr[col] for arr in history][:k])
     else:
@@ -325,6 +337,17 @@ def bb_plot_history(
         prob_true: list,
         k=-1,
 ):
+    """
+    Plots the history of the Beta distribution parameters for Bayesian bandits.
+
+    Args:
+        history (list): The history of [a_hist, b_hist] over time.
+        prob_true (list): The true probabilities of winning for each bandit.
+        k (int): The index of the time step to plot. Default is -1, which plots the final time step.
+
+    Returns:
+        None
+    """
     x = np.linspace(0, 1, 100)
     legend_str = [[]] * len(prob_true)
     plt.figure(figsize=(20, 5))
