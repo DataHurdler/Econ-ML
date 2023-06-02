@@ -112,10 +112,11 @@ While a `Bagging` algorithm helps to reduce bias, the main benefit of bootstrapp
 While the main benefit of `Bagging` is in reducing variance, the main benefit of `Boosting` is to reduce bias, while maintaining a reasonably low variance. Boosting is able to maintain a low variance because, like Bagging, it also fits many trees. Unlike Bagging, which builds the trees in parallel, Boosting builds them sequentially.
 
 The basic idean of boosting is to have incremental (small/"weak") improvements from the previous model, which is why it is built sequentially. This idea can be applied to all types of algorithms. In the context of decision tree, a boosting algorithm can be demonstrated by the following pseudocode:
+
 ```
 Step 1: Build a simple decision tree (weak learner)
-Step 2: Loop until stopping rule has reached:
-            Try to improve from model in the previous iteration
+Step 2: Loop:
+            Minimize weighted error
 ```
 
 Currently, there are three main types of tree-based boosting algorithms: `AdaBoost`, `Gradient Boosting`, and `XGBoost`. The different algorithms are different in how to *boost*, i.e., how to implement Step 2.
@@ -126,17 +127,23 @@ It is straightforward to see that a boosting algorithm lowers bias. But was it o
 
 Let $w_{ij}$ denote the weight of individual $i$ in stage/iteration $j$. In the beginning of the algorithm, we have $w_{i1}=1/N$ for all $i$ where $N$ is the the total number of individuals. After the first weak tree is built, we can calculate the error/misclassification rate of stage $j$ as
 
-$$e_j = \frac{\sum_{N}{w_{ij}\times I_{ij}(\text{correct})}}{\sum_{N}{w_{ij}}}$$
+$$e_j = \frac{\sum_{N}{w_{ij}\times I_{ij}(\text{incorrect})}}{\sum_{N}{w_{ij}}}$$
 
-where $I_{ij}(\text{correct})$ equals 1 if the prediction for individual $i$ is correct in stage $j$ and 0 otherwise. We can then calculate the *stage value* of model $j$:
+where $I_{ij}(\text{incorrect})$ equals 1 if the prediction for individual $i$ is incorrect in stage $j$ and 0 otherwise. We can then calculate the *stage value* of model $j$:
 
-$$v_j = \log\left(\frac{1-e_j}{e_j}\right)$$
+$$v_j = \frac{1}{2}\log\left(\frac{1-e_j}{e_j}\right)$$
 
 The stage value is used both in updating $w_{ij+1}$, i.e., the weight of individual $i$ in the next stage, and in acting as the weight of model $j$ when prediction is computed. To update the weight for the next stage/model, we have
 
-$$w_{ij+1} = w_{ij} \times \exp{(v_j \times I_{ij}(\text{correct}))}$$
+$$w_{ij+1} = w_{ij} \times \exp{(v_j \times I_{ij}(\hat{y}_{ij}=y_i))}$$
 
-To compute the prediction, let $\hat{y}_{ij}$ denote the predict of model/stage $j$ for individual $j$, then the predicted value is calculated by:
+where $\hat{y}_{ij}$ is the prediction for individual $i$ in stage $j$ and $y_i$ is the true label for individual $i$. For binary classification, it is conventional to expression $\hat{y}_{ij}$ and $y_i$ as 1 and -1, so that the above equation can be simplified into
+
+$$w_{ij+1} = w_{ij} \times \exp{(v_j \times \hat{y}_{ij}\times y_i)}$$
+
+At each stage $j(>1)$, the `AdaBoost` algorithm aims to minimize $e_j$.
+
+To compute the overall/final prediction, let $\hat{y}_{ij}$ denote the prediction of model/stage $j$ for individual $j$, then the predicted value is calculated by:
 
 $$\hat{y}_{i} = \sum_{J}{\hat{y}_{ij} \times v_j}$$
 
@@ -146,11 +153,33 @@ where $J$ is the total number of stages.
 
 `Gradient Boosting` (Friedman, 2001) is another approach to boost. Instead of updating the weight after each stage/model, Gradient Boosting aims to minimize a loss function, using method such as gradient decent. The default loss function in scikit-learn, which is also the most common in practice, is the binomial deviance:
 
-$$LL = -2\sum_{N}{y_i\log{(\hat{p}_{ij})} + (1-y_i)\log{(1-\hat{p}_{ij})}}$$
+$$L_j = -2\sum_{N}{y_i\log{(\hat{p}_{ij})} + (1-y_i)\log{(1-\hat{p}_{ij})}}$$
 
-where $N$ is the number of individuals, $y_i$ is the true label for individual $i$, and $\hat{p}_{ij}$ is the predicted probability that individual $i$ at stage $j$ having a label of $y$.
+where $N$ is the number of individuals, $y_i$ is the true label for individual $i$, and $\hat{p}_{ij}$ is the predicted probability that individual $i$ at stage $j$ having a label of $y$, and is given by the softmax function (logistic) when log-loss is specified:
 
-`XGBoost` was introduced by Tianqi Chen in 2014. It is short for "e*X*treme *G*radient *Boost*ing"
+$$\hat{p}_{ij} = \frac{\exp{(F_j(x_i))}}{1+\exp{(F_j(x_i))}}$$
+
+where $F_j(x_i)$ is a numerical predicted value for individual $i$ by regressor $F_j(x)$. Here, $F_j(x)$ is the aggregated regressor in stage $j$, which is given by
+
+$$F_j(x) = F_{j-1}(x) + h_j(x)$$
+
+where $h_j(x)$ is the weak learner/regressor at stage $j$ that minimizes $L_j$. Substituting $F_M(x)$, the final regressor, into the above formula for $\hat{p}_{ij}$ gives the final prediction of the Gradient Boosting model.
+
+Finally, using first-order Taylor approximation, it can be shown that minimizing $L_j$ is approximately equivalent to predicting the negative gradient of the samples, where the negative gradient for individual $i$ is given by
+
+$$-g_i = -\left[\frac{\partial l_{ij-1}}{\partial F_{j-1}(x_i)}\right]$$
+
+where $l_{ij-1}$ is the term inside the summation in $L_j$ (but lagged one stage):
+
+$$l_{ij-1} = y_i\log{(\hat{p}_{ij-1})} + (1-y_i)\log{(1-\hat{p}_{ij-1})}$$
+
+In other words, while the basic decision tree algorithm aims to predict the true classes, usually represented by 0s and 1s, `Gradient Boosting` aims to predict a numerical value that is the gradient. This means that, at each stage, Gradient Boosting is a regression problem rather than a classification problem. Predicting the gradient allows the algorithm to utilize many well developed methods for such task, for example, the Nelder-Mead method or simple grid search.
+
+The discussion above focused on binary classification, which requires a single tree to be built in each stage. In multiclass classification, $K$ trees would be built for $K$ classes. For example, if `Gradient Boosting` is used to identify the 26 English alphabets, 26 trees are built and fitted in each stage.
+
+`XGBoost` was introduced by Tianqi Chen in 2014. It is short for "e*X*treme *G*radient *Boost*ing". Instead of gradient decent, `XGBoost` implements [Newton's Method](https://en.wikipedia.org/wiki/Newton%27s_method), which is computationally much more demanding than gradient decent and requires a second-order Taylor approximation (instead of first-order as in `Gradient Boosting`). Due to this, in addition to **Gradients**, `XGBoost` also calculates the **Hessians**, which are a set of second-order derivatives (whereas gradients are the first-order derivatives).
+
+`Python` library `xgboost` implements `XGBoost` and can be easily integrated with `scikit-learn`, which we use to implement all other algorithms covered in this chapter.
 
 ## Python Implementation with scikit-learn
 
@@ -165,7 +194,6 @@ Mention causal tree.
 
 * https://scikit-learn.org/stable/modules/tree.html#tree
 * https://xgboost.readthedocs.io/en/stable/tutorials/model.html
-* https://www.nvidia.com/en-us/glossary/data-science/xgboost/
 * https://machinelearningmastery.com/boosting-and-adaboost-for-machine-learning/
 * https://stats.stackexchange.com/questions/157870/scikit-binomial-deviance-loss-function
 * https://www.ccs.neu.edu/home/vip/teach/MLcourse/4_boosting/slides/
