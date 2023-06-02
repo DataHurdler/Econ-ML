@@ -7,12 +7,12 @@ from sklearn.cluster import KMeans
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import AdaBoostClassifier
 from sklearn.ensemble import GradientBoostingClassifier
-from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
-import xgboost as xgb
+import xgboost
 
 N_GROUP = 5
 N_IND = 10000
@@ -24,7 +24,7 @@ class TreeModels:
             self,
             n_group: int = 5,
             n_individuals: int = 10000,
-            n_num_features: int = 5,
+            n_num_features: int = 10,
             numeric_only: bool = False,
     ):
         """
@@ -33,7 +33,7 @@ class TreeModels:
         Args:
             n_group (int): Number of groups. Default is 5.
             n_individuals (int): Number of individuals. Default is 10000.
-            n_num_features (int): Number of numerical features. Default is 5.
+            n_num_features (int): Number of numerical features. Default is 10.
             numeric_only (bool): Flag to indicate whether to use only numerical features. Default is False.
 
         Returns:
@@ -43,14 +43,16 @@ class TreeModels:
         print(f'There are {n_group} choices.')
         print(f'There are {n_num_features} numerical features and 1 categorical feature.')
 
+        self.numeric_only = numeric_only
+
         # Generate random numerical features and categorical feature
         self.num_features = np.random.rand(n_individuals, n_num_features + 2)
         cat_list = random.choices(string.ascii_uppercase, k=6)
-        self.cat_feature = np.random.choice(cat_list, size=(n_individuals, 1))
+        self.cat_features = np.random.choice(cat_list, size=(n_individuals, 1))
 
         # Create a DataFrame with numerical features and one-hot encoded categorical feature
         self.df = pd.DataFrame(self.num_features[:, :-2])
-        self.df['cat_feature'] = self.cat_feature
+        self.df['cat_features'] = self.cat_features
         self.df = pd.get_dummies(self.df, prefix=['cat'])
         self.df.columns = self.df.columns.astype(str)
 
@@ -94,6 +96,7 @@ class TreeModels:
             None
         """
         print(clf)
+        name = [name for name in globals() if globals()[name] is clf][0]
         clf.fit(self.X_train, self.y_train)
         self.y_pred = clf.predict(self.X_test)
 
@@ -123,6 +126,7 @@ class TreeModels:
         disp = ConfusionMatrixDisplay(confusion_matrix=cm,
                                       display_labels=clf.classes_)
         disp.plot()
+        plt.savefig(f"cm_{name}_{self.numeric_only}.png", dpi=150)
         plt.show()
 
 
@@ -131,22 +135,25 @@ if __name__ == "__main__":
     plt.ion()
     random.seed(123)
 
-    tree = TreeModels(n_num_features=N_FEATURES, numeric_only=False)
+    numeric_only_bool = [False, True]
 
-    logit = LogisticRegression(max_iter=10000)
-    tree.show_results(logit)
+    for i in numeric_only_bool:
+        tree = TreeModels(n_num_features=N_FEATURES, numeric_only=i)
 
-    d_tree = DecisionTreeClassifier()
-    tree.show_results(d_tree)
+        logit = LogisticRegression(max_iter=10000)
+        tree.show_results(logit)
 
-    rf = RandomForestClassifier()
-    tree.show_results(rf)
+        d_tree = DecisionTreeClassifier()
+        tree.show_results(d_tree)
 
-    ada = AdaBoostClassifier()
-    tree.show_results(ada)
+        rf = RandomForestClassifier()
+        tree.show_results(rf)
 
-    gbm = GradientBoostingClassifier()
-    tree.show_results(gbm)
+        ada = AdaBoostClassifier()
+        tree.show_results(ada)
 
-    xgb = xgb.XGBClassifier()
-    tree.show_results(xgb)
+        gbm = GradientBoostingClassifier()
+        tree.show_results(gbm)
+
+        xgb = xgboost.XGBClassifier()
+        tree.show_results(xgb)
