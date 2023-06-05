@@ -346,8 +346,6 @@ Additional randomness is then added to the numerical features with:
 
 The rest of the `TreeModels` class performs the train-test split and adds a method named `show_results()` to run the selected algorithm then print out several performance metrics.
 
-## Confusion Matrix
-
 ## Comparison the Algorithms
 
 ## Summary
