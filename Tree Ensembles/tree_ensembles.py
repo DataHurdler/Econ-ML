@@ -82,25 +82,23 @@ class TreeModels:
         # Initialize the y_pred variable
         self.y_pred = np.empty([n_individuals, 1])
 
-    def show_results(
-            self,
-            clf,
-    ):
+    def show_results(self, clf, clf_name, save_plot=True):
         """
         Train and evaluate a classifier.
 
         Args:
             clf: Classifier object.
+            clf_name (str): Name of the classifier.
+            save_plot (bool): Whether to save plots. Default is True.
 
         Returns:
             None
         """
         print(clf)
-        name = [name for name in globals() if globals()[name] is clf][0]
         clf.fit(self.X_train, self.y_train)
         self.y_pred = clf.predict(self.X_test)
 
-        if clf == logit:
+        if isinstance(clf, LogisticRegression):
             print(f'Coefficients: {clf.coef_}')
         else:
             print(f'Feature Importance: {clf.feature_importances_}')
@@ -123,37 +121,44 @@ class TreeModels:
 
         # Plot the confusion matrix
         cm = confusion_matrix(self.y_test, self.y_pred, labels=clf.classes_)
-        disp = ConfusionMatrixDisplay(confusion_matrix=cm,
-                                      display_labels=clf.classes_)
+        disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=clf.classes_)
         disp.plot()
-        plt.savefig(f"cm_{name}_{self.numeric_only}.png", dpi=150)
+
+        if save_plot:
+            plt.savefig(f"cm_{clf_name}_{self.numeric_only}.png", dpi=150)
+
         plt.show()
 
 
-if __name__ == "__main__":
-    # No interruption by plt.show()
-    plt.ion()
-    random.seed(123)
-
+def run_tree_ensembles(save_plot=True):
     numeric_only_bool = [False, True]
 
     for i in numeric_only_bool:
         tree = TreeModels(n_num_features=N_FEATURES, numeric_only=i)
 
         logit = LogisticRegression(max_iter=10000)
-        tree.show_results(logit)
+        tree.show_results(logit, 'logit', save_plot)
 
         d_tree = DecisionTreeClassifier()
-        tree.show_results(d_tree)
+        tree.show_results(d_tree, 'decisiontree', save_plot)
 
         rf = RandomForestClassifier()
-        tree.show_results(rf)
+        tree.show_results(rf, 'randomforest', save_plot)
 
         ada = AdaBoostClassifier()
-        tree.show_results(ada)
+        tree.show_results(ada, 'adaboost', save_plot)
 
         gbm = GradientBoostingClassifier()
-        tree.show_results(gbm)
+        tree.show_results(gbm, 'gbm', save_plot)
 
         xgb = xgboost.XGBClassifier()
-        tree.show_results(xgb)
+        tree.show_results(xgb, 'xgboost', save_plot)
+
+
+if __name__ == "__main__":
+    # No interruption by plt.show()
+    plt.ion()
+    random.seed(123)
+    run_tree_ensembles()
+
+
