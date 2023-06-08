@@ -81,13 +81,13 @@ $$\theta^* = \argmin_{\theta}{G(Q_m, \theta)}$$
 
 ## 修剪
 
-If achieving a "pure" branch, where there remains observations from a single class after a split, minimizes the quality function $G(Q_m, \theta)$, then why did we not achieve that "pure" state in the illustrative music store example? There are two main reasons. First, we may not have enough features. Imagine you have two individuals in your data set, one bought a small instrument and the other bought a large instrument. These two individuals are almost identical: the only difference is in their eye colors. If "eye color" is not one of the features captured in your data set, you will have no way to distinguish these two individuals. On the other hand, imagine we know *everything* about each and every individual, then it is almost guaranteed that you can find a "perfect" tree, such that there is a single class of individuals at each end node. Such "perfect" tree may not be unique. At the extreme, imagine a tree such that each end node represents a single individual.
+如果拆分后只有一个分类时能最小化质量函数 $G(Q_m, \theta)$，那为什么前面的例子中消费者购买黄色的概率不是0或者100%？这里的主要原因有两个。第一我们未必有足够的变量来得到完全的分类。打个比方，如果有两个消费者，他们各方面都一样但是其中染了蓝色的头发的会买蓝色。如果头发的颜色并不是你数据库中的一列，那么你就无法区分开这两个消费者，从而也没有办法把决策树拆分得“完美”。
 
-The second reason is something we have already covered: the Bias-Variance Tradeoff. Because the ultimate goal is to predict, fitting a "perfect" tree can result in too high of a variance. Continued with the previous example, your ability to build a perfect tree would totally depend on whether you have "eye color" as a feature in your data set. That means that your algorithm is too sensitive to one particular feature - if this feature does not exist, your algorithm would fail to build a "perfect" tree (assuming that was the goal). Or, if this feature is somehow absent or incorrect in the data set you are predicting on, your algorithm would have a breakdown.
+第二个原因，则是我们前面讲到过的“偏差-方差间权衡”。找到一个拆分“完美”的决策树可能会导致方差很高。回到前面的例子，可能头发的颜色是你数据库中的一列，但是这个根据头发颜色来进行拆分，实际上只在上面所说倒的例子里才有意义。又或者，头发颜色这个变量在你进行预测的数据里并没有。这个时候，你的算法就不知道该怎么办了。
 
-This is why a decision tree needs to be pruned. This is often done by specifying two hyperparameters in the decision tree algorithm: the maximum depth of the tree (`max_depth`) and the minimum number of samples required to split (`min_samples_split`). Without going into the technical details, we can intuitively understand that both of these restrictions can prevent us from splitting the tree to the extreme case such that each end node represents an individual. In other words, they restrict the growth of a tree.
+这就是为什么决策树需要被“修剪”的原因。在实践当中，修剪通常通过两个参数（hyperparameter）来实现：决策树所允许层数的最大值（`max_depth`）以及每次拆分所要求的最小样本量（`min_samples_split`）。在这里，我们不对这两个参数作更多技术性分析。在直觉上，我们很容易理解为什么这两个参数会限制决策树的生长。
 
-The caveat of a single decision tree algorithm is obvious: it can easily suffer from either high bias or high variance, especially the latter. This is why ensemble methods such as **bagging** and **boosting** were invented. In practice, a single decision tree is rarely used anymore, except as a demonstrative example.
+通过以上讨论，我们发现，决策树的缺点是很明显的：它可能会有高偏差，也可能会有搞方差。其中高方差的问题，特别严重。这就是为什么需要学习装袋法（bagging）和提升法（boosting）的原因。在实践当中，单棵的决策树通常只会被用来作为算法的一个展示，而很少会被用在实际决策中。
 
 ## Bagging and Random Forest
 
