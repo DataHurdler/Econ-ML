@@ -82,42 +82,47 @@ class TreeModels:
         # Initialize the y_pred variable
         self.y_pred = np.empty([n_individuals, 1])
 
-    def show_results(self, clf, clf_name, save_plot=True):
+        # Initialize a dictionary to save results
+        self.results = dict()
+
+    def show_results(self, clf, clf_name, print_flag=False, save_plot=True):
         """
         Train and evaluate a classifier.
 
         Args:
             clf: Classifier object.
             clf_name (str): Name of the classifier.
+            print_flag (bool): Whether to print results. Default is False.
             save_plot (bool): Whether to save plots. Default is True.
 
         Returns:
             None
         """
-        print(clf)
+        # print(clf)
         clf.fit(self.X_train, self.y_train)
         self.y_pred = clf.predict(self.X_test)
 
-        if isinstance(clf, LogisticRegression):
-            print(f'Coefficients: {clf.coef_}')
-        else:
-            print(f'Feature Importance: {clf.feature_importances_}')
-
         # Calculate evaluation metrics
         train_acc = clf.score(self.X_train, self.y_train)
-        print(f'Training accuracy: {train_acc:.4f}')
         acc = accuracy_score(self.y_test, self.y_pred)
-        print(f'Test accuracy: {acc:.4f}')
         precision = precision_score(self.y_test, self.y_pred, average='weighted')
-        print(f'Test precision: {precision:.4f}')
         recall = recall_score(self.y_test, self.y_pred, average='weighted')
-        print(f'Test recall: {recall:.4f}')
         f1 = f1_score(self.y_test, self.y_pred, average='weighted')
-        print(f'Test F1 score: {f1:.4f}')
 
         # Perform cross-validation and print the average score
         cv_score = cross_val_score(clf, self.X, self.y, cv=10)
-        print(f'Average Cross Validation: {np.mean(cv_score)}')
+
+        if print_flag:
+            if isinstance(clf, LogisticRegression):
+                print(f'Coefficients: {clf.coef_}')
+            else:
+                print(f'Feature Importance: {clf.feature_importances_}')
+            print(f'Training accuracy: {train_acc:.4f}')
+            print(f'Test accuracy: {acc:.4f}')
+            print(f'Test precision: {precision:.4f}')
+            print(f'Test recall: {recall:.4f}')
+            print(f'Test F1 score: {f1:.4f}')
+            print(f'Average Cross Validation: {np.mean(cv_score)}')
 
         # Plot the confusion matrix
         cm = confusion_matrix(self.y_test, self.y_pred, labels=clf.classes_)
@@ -129,30 +134,48 @@ class TreeModels:
 
         plt.show()
 
+        # Save results in self.result dictionary
+        self.results[clf_name] = {
+            'train_acc': train_acc,
+            'acc': acc,
+            'precision': precision,
+            'recall': recall,
+            'f1_score': f1,
+            'cv_score': np.mean(cv_score)
+        }
 
-def run_tree_ensembles(save_plot=True):
-    numeric_only_bool = [False, True]
+
+def run_tree_ensembles(
+        n_group: int = 5,
+        n_individuals: int = 10000,
+        n_num_features: int = 10,
+        print_flag: bool = True,
+        save_plot: bool = True,
+        numeric_only_bool: list = (False, True),
+) -> dict:
 
     for i in numeric_only_bool:
-        tree = TreeModels(n_num_features=N_FEATURES, numeric_only=i)
+        tree = TreeModels(n_group, n_individuals, n_num_features, numeric_only=i)
 
         logit = LogisticRegression(max_iter=10000)
-        tree.show_results(logit, 'logit', save_plot)
+        tree.show_results(logit, 'logit', print_flag, save_plot)
 
         d_tree = DecisionTreeClassifier()
-        tree.show_results(d_tree, 'decisiontree', save_plot)
+        tree.show_results(d_tree, 'decisiontree', print_flag, save_plot)
 
         rf = RandomForestClassifier()
-        tree.show_results(rf, 'randomforest', save_plot)
+        tree.show_results(rf, 'randomforest', print_flag, save_plot)
 
         ada = AdaBoostClassifier()
-        tree.show_results(ada, 'adaboost', save_plot)
+        tree.show_results(ada, 'adaboost', print_flag, save_plot)
 
         gbm = GradientBoostingClassifier()
-        tree.show_results(gbm, 'gbm', save_plot)
+        tree.show_results(gbm, 'gbm', print_flag, save_plot)
 
         xgb = xgboost.XGBClassifier()
-        tree.show_results(xgb, 'xgboost', save_plot)
+        tree.show_results(xgb, 'xgboost', print_flag, save_plot)
+
+        return tree.results
 
 
 if __name__ == "__main__":
@@ -160,5 +183,3 @@ if __name__ == "__main__":
     plt.ion()
     random.seed(123)
     run_tree_ensembles()
-
-
