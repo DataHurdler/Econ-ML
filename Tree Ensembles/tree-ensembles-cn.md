@@ -24,63 +24,62 @@
 
 下一篇文章，我们会讨论简单的决策树算法。我们会发现，决策树算法很容易出现高方差，或者说过度拟合（over-fitting）。
 
-As we will see next, tree-based algorithms are extremely prone to high variance, or *over-fitting*.
+## 决策树
 
-## Decision Tree
+我们首先来讨论最基本的模型：决策树。因为我们在Python代码中会使用 [scikit-learn](https://scikit-learn.org/stable/)，所以我们的讨论会尽量保持与scikit-learn的使用说明一致。需要注意的是，这里对决策树的讨论只限于其中重要的或者与文章后面介绍的算法相关的内容。在网络上你可以找到很多对决策树更深入的介绍，譬如[An Introduction to Statistical Learning](https://www.statlearning.com/) 和 [The Elements of Statistical Learning](https://hastie.su.domains/ElemStatLearn/)这两本书中的相关内容。
 
-Let's first talk about the basic decision tree algorithm. Because we will be using [scikit-learn](https://scikit-learn.org/stable/) for `Python` implementation in this chapter, I am using notations and languages similar to that in scikit-learn's documentations. Also, since this is not a comprehensive lecture on decision tree, as you can easily find more in-depth discussions in books such as [An Introduction to Statistical Learning](https://www.statlearning.com/) and [The Elements of Statistical Learning](https://hastie.su.domains/ElemStatLearn/), or other online learning sources, my focus is what matters most for the applications of these algorithms in business and economics.
+理解决策树最简单的方法是把它想象成一个流程图，特别是用于作诊断或判断的流程图。我们把很多数据提供给电脑，然后电脑通过决策树算法来构造一个流程图来解释数据。回到前面的例子，如果我们有很多关于顾客的数据，那么我们就有可能通过决策树算法来构造一个决策树，来判断一个顾客是会蓝色还是黄色的产品：
 
-The simplest way to think about a decision tree algorithm is to consider a flow-chart, especially one that is for diagnostic purposes. Instead of someone building a flow-chart from intuition or experience, we feed data into the computer and the decision tree algorithm would build a flow-chart to explain the data. For example, if we know some characteristics of consumers of the music store, and want to know who is more likely to buy the smaller size instruments, a flow-chart, built by the decision tree algorithm, may look like this:
-* Is the customer under 30?
-  * Yes: is the customer female?
-    * Yes: has the customer played any instrument before?
-      * Yes: the customer has a 90% chance buying a smaller instruments
-      * No: the customer has 15% chance buying a smaller instruments
-    * No: is the customer married?
-      * Yes: the customer has a 5% chance buying a smaller instruments
-      * No: the customer has 92% chance buying a smaller instruments
-  * No: is the customer under 50?
-    * Yes: the customer has a 10% chance buying a smaller instruments
-    * No: has the customer played any instrument before?
-      * Yes: the customer has a 100% chance buying a smaller instruments
-      * No: the customer has a 20% chance buying a smaller instruments
+* 顾客有30岁吗?
+  * 有：顾客是女性吗?
+    * 是：顾客是回头客吗?
+      * 是：这个顾客有90%概率会买黄色
+      * 不是：这个顾客有15%概率会买黄色
+    * 不是：顾客已婚吗?
+      * 已婚：这个顾客有5%概率会买黄色
+      * 未婚：这个顾客有92%概率会买黄色
+  * 没有：顾客有50岁吗?
+    * 有：这个顾客有10%概率会买黄色
+    * 没有：顾客是回头客吗？
+      * 是：这个顾客有100%概率会买黄色
+      * 不是：这个顾客有20%概率会买黄色
 
-You can see several basic elements of a decision tree algorithm:
-1. As expected, the tree algorithm resulted in a hierarchical structure that can be easily represented by a tree diagram;
-2. The tree structure does not need to be symmetrical. For example, when the answer to "is the customer under 50" is a "yes", the branch stopped, resulted in a shorter branch compared to the rest of the tree;
-3. You may use the same feature more than once. In this example, the question "has the customer played any instrument before" has appeared twice;
-4. You can use both categorical and numerical features. In this example, age is numerical, whereas all other features are categorical;
-5. It is accustomed to split to two branches at each node but no more. If you want three branches, you can do it at the next node: two branches first, then one of the next nodes splits into another 2 branches. Personally, I like keeping it that way. One exception may be at the end node, as there is no further split.
+从这个例子当中，我们可以看到决策树算法的几个基本特征：
+1. 决策树算法的结果可以很容易地被展示为树状图；
+2. 树状图并不需要是对称的。譬如，当顾客我们知道顾客有50岁时，那一个分支就直接结束了，导致这个分支相对短一些；
+3. 同一个变量可以被使用多次。在这个例子当中，“顾客是回头客吗?”出现了两次；
+4. 数值变量和分类变量都能用。在这里例子当中，年龄是数值变量，其他的都是分类变量；
+5. 通常，每个节点只拆分成两个分支。有一个分类变量有三个分类，那么可以先分成两组，然后下一个分支再分两组。
 
-There are other elements of a decision tree algorithm that you can not observe directly from this example but are very important. We will examine these in more details below.
+决策树算法中还有一些重要的方面是这个例子中无法展现的。以下两节内容，我们就来了解一下
 
-## Split Criterion
+## 拆分标准
 
-At each node, the split must be based on some criterion. The commonly used criteria are **Gini impurity** and **Entropy** (or **Log-loss**). According to the scikit-learn documentation, let
+决策树算法的每一次拆分，都需要根据一定的标准来进行。这些标准当中最常用的两个是基尼系数（Gini impurity）和信息熵（Entropy）。我们用
 
 $$p_{mk}=\frac{1}{n_m}\sum_{y\in Q_m}{I(y=k)}$$
 
-denote the proportion of class $k$ observations in node $m$, where $Q_m$ is the data at node $m$, $n_m$ is the sample size at node $m$, and $I(\cdot)$ returns 1 when $y=k$ and 0 otherwise. Then, the **Gini impurity** is given by:
+来代表类型 $k$ 在节点 $m$ 所占比重，其中 $Q_m$ 是节点 $m$ 的所有数据，$n_m$ 是在节点 $m$ 的样本数。如果 $y=k$，那么$ I(\cdot)$ 取值为1，否则取值为0。那么，基尼系数的计算如下：
 
 $$H(Q_m)=\sum_{k}{p_{mk}(1-p_{mk})}$$
 
-whereas **Entropy** is given by:
+而信息熵的计算则是：
 
 $$H(Q_m)=-\sum_{k}{p_{mk}\log{(p_{mk})}}$$
 
-At each node $m$, a `candidate` is defined by the combination of feature and threshold. For example, in the above example, for the question "Is the customer under 30," the feature is age and the threshold is 30. Let $\theta$ denote a candidate, which splits $Q_m$ into two partitions: $Q_m^{\text{left}}$ and $Q_m^{\text{right}}$. Then the quality of a split with $\theta$ is computed as the weighted average of the criterion function $H(Q_m)$:
+在每一个节点 $m$，一个“候选方法（candidate）”被定义为变量和阈值的组合。譬如说，“顾客有30岁吗”这个候选方法中，变量是年龄而阈值是30。如果我们 $\theta$ 来代表候选方法，而这个方法把 $Q_m$ 拆分为两组：$Q_m^{\text{left}}$ 和 $Q_m^{\text{right}}$，那么，这个拆分的质量（quality）可以通过标准函数（criterion function）的加权平均来计算：
 
 $$G(Q_m, \theta) = \frac{n_m^{\text{left}}}{n_m}H(Q_m^{\text{left}}(\theta)) + \frac{n_m^{\text{right}}}{n_m}H(Q_m^{\text{right}}(\theta))$$
 
-The objective of the decision tree algorithm is to find the candidate that minimizes the quality at each $m$:
+决策树算法的目标就是寻找在每一个节点可以最小化上述质量函数（quality function）的候选方法：
 
 $$\theta^* = \argmin_{\theta}{G(Q_m, \theta)}$$
 
-It is straightforward to see that, from either the **Gini impurity** or the **Entropy** criterion function, the unconstrained minimum of $G(Q_m, \theta)$ is achieved at $p_{mk}=0$ or $p_{mk}=1$, i.e., when the result of the split consists of a single class.
+我们很容易发现，无论我们用的是基尼系数还是信息熵来作为标准函数，在没有限制条件下，$G(Q_m, \theta)$ 的最小值将在$p_{mk}=0$ 或 $p_{mk}=1$ 时实现。换句话说，当拆分后只有一个分类时，质量函数的值会最小。
 
-Before we move on, here is a quick remark: while there exists a global optimum for building a decision tree, where the quality function is minimized for the *whole* tree, the computation of such algorithm is too complex. As a result, practical decision tree algorithms resolve to using *local* optima at each node as described above.
+值得一提的是，决策树算法中中存在一个全局最优（global optimum），但是找到这个全局最优所需的计算量太大了。在实践当中，决策树算法找的是最小化每个节点质量函数的局部最优（local optima）。
 
-## Pruning
+## 修剪
 
 If achieving a "pure" branch, where there remains observations from a single class after a split, minimizes the quality function $G(Q_m, \theta)$, then why did we not achieve that "pure" state in the illustrative music store example? There are two main reasons. First, we may not have enough features. Imagine you have two individuals in your data set, one bought a small instrument and the other bought a large instrument. These two individuals are almost identical: the only difference is in their eye colors. If "eye color" is not one of the features captured in your data set, you will have no way to distinguish these two individuals. On the other hand, imagine we know *everything* about each and every individual, then it is almost guaranteed that you can find a "perfect" tree, such that there is a single class of individuals at each end node. Such "perfect" tree may not be unique. At the extreme, imagine a tree such that each end node represents a single individual.
 
