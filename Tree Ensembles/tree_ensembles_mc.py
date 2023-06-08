@@ -7,11 +7,11 @@ plt.ion()
 
 
 def run_monte_carlo():
-    n_individuals_range = range(1000, 100001, 1000)
+    n_individuals_range = range(1000, 100001, 5000)
 
     all_results = {}
 
-    with Pool(cpu_count()) as pool:
+    with Pool(cpu_count()-1) as pool:
         results = pool.starmap(run_tree_ensembles, [
             (5, n_individuals, 10, False, False, [True]) for n_individuals in n_individuals_range
         ])
