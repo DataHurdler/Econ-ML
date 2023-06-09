@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-import seaborn as sns
+import random
 import pandas as pd
 from multiprocessing import Pool, cpu_count
 from functools import partial
@@ -7,7 +7,7 @@ from tree_ensembles import run_tree_ensembles
 
 plt.ion()
 
-n_individuals_range = range(5000, 50001, 5000)
+n_individuals_range = range(50001, 5000, -5000)
 
 
 def run_monte_carlo(n_individuals_range, numeric_only_bool):
@@ -52,6 +52,8 @@ def plot_monte_carlo(data: list):
 
 
 if __name__ == "__main__":
+    random.seed(42)
+
     mc_output = run_monte_carlo(n_individuals_range, [False])
     plot_monte_carlo(mc_output)
     plt.savefig(f"comparison_false.png", dpi=300)
