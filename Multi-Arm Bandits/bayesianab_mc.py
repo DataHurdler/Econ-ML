@@ -63,7 +63,7 @@ def monte_carlo(
 
     for algo in algos:
         print(f'Running {algo}...')
-        with Pool(cpu_count()) as pool:
+        with Pool(cpu_count()-1) as pool:
             func = partial(worker, algo, N_bandits, n, p_max, p_diff, p_min)
             results = list(pool.imap(func, range(m)))
 
