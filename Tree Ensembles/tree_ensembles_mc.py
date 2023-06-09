@@ -38,11 +38,16 @@ def plot_monte_carlo(data: list):
                 df_list.append({'i': i, 'Model': j, 'cv_score': value})
     df = pd.DataFrame(df_list)
 
-    sns.scatterplot(data=df, x='i', y='cv_score', hue='Model', palette="Set2")
+    colors = sns.color_palette("Set2", len(data))
+    
+    sns.scatterplot(data=df, x='i', y='cv_score', hue='Model', legend="full", palette=colors)
     plt.xlabel('Number of Individuals')
     plt.ylabel('Cross Validation Scores')
     plt.title('Plot of Cross Validation Scores')
-    plt.legend(loc='best', fontsize=9)
+    plt.legend(['Logit', 'Decision Tree', 'Random Forest', 'Adaboost', 'GBM', 'XGBoost'],
+               loc='lower right',
+               fontsize=9, markerscale=1.5, scatterpoints=1,
+               fancybox=True, framealpha=0.5)
     plt.show()
 
 

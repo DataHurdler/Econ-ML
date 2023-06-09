@@ -153,7 +153,7 @@ def plot_monte_carlo(
         if m == 2:
             # Create custom legend using prob_true and colors
             custom_legend = [plt.Line2D([], [], color=colors[i], label=algos[i]) for i in range(len(algos))]
-            ax.legend(handles=custom_legend, loc='upper left', fontsize=9)
+            ax.legend(handles=custom_legend, loc='upper left', fontsize=9, fancybox=True, framealpha=0.5)
             n += 1
             m = 0
         else:
