@@ -7,7 +7,7 @@ from tree_ensembles import run_tree_ensembles
 
 plt.ion()
 
-n_individuals_range = range(50001, 5000, -5000)
+n_individuals_range = range(3001, 1000, -1000)
 
 
 def run_monte_carlo(n_individuals_range, numeric_only_bool):
@@ -38,7 +38,7 @@ def plot_monte_carlo(data: list):
     for i, model in enumerate(df['Model'].unique()):
         model_data = df[df['Model'] == model]
         color = cmap(i % num_models)  # Cycle through the color map
-        ax.scatter(model_data['i'], model_data['cv_score'], c=color, label=model, alpha=0.5, s=50)
+        ax.plot(model_data['i'], model_data['cv_score'], '-o', c=color, label=model, alpha=0.5)
 
     ax.set_xlabel('Number of Individuals')
     ax.set_ylabel('Cross Validation Scores')
