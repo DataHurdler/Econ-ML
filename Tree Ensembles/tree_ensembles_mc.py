@@ -10,20 +10,11 @@ from tree_ensembles import run_tree_ensembles
 n_individuals_range = range(1000, 3001, 1000)
 
 
-def run_monte_carlo(n_individuals_range):
-
-    all_results = {}
-
-    # with Pool(cpu_count()-1) as pool:
-    #     results = pool.starmap(run_tree_ensembles, [
-    #         (5, n_individuals, 10, False, False, [True]) for n_individuals in n_individuals_range
-    #     ])
+def run_monte_carlo(n_individuals_range, numeric_only_bool):
 
     with Pool(cpu_count()-1) as pool:
-        func = partial(run_tree_ensembles, 5, 10, False, False, [True])
+        func = partial(run_tree_ensembles, 5, 10, False, False, numeric_only_bool)
         results = list(pool.imap(func, n_individuals_range))
-
-        # all_results[n_individuals] = results
 
     return results
 
@@ -38,9 +29,14 @@ def plot_monte_carlo(data: list):
                 df_list.append({'i': i, 'Model': j, 'cv_score': value})
     df = pd.DataFrame(df_list)
 
-    colors = sns.color_palette("Set2", len(data))
-    
-    sns.scatterplot(data=df, x='i', y='cv_score', hue='Model', legend="full", palette=colors)
+    num_models = len(df['Model'].unique())
+    cmap = plt.get_cmap('Set2')  # Use the Set2 color map
+
+    for i, model in enumerate(df['Model'].unique()):
+        model_data = df[df['Model'] == model]
+        color = cmap(i % num_models)  # Cycle through the color map
+        plt.scatter(model_data['i'], model_data['cv_score'], c=color, label=model, alpha=0.5, s=50)
+
     plt.xlabel('Number of Individuals')
     plt.ylabel('Cross Validation Scores')
     plt.title('Plot of Cross Validation Scores')
@@ -48,17 +44,15 @@ def plot_monte_carlo(data: list):
                loc='lower right',
                fontsize=9, markerscale=1.5, scatterpoints=1,
                fancybox=True, framealpha=0.5)
-    plt.show()
+
+    # plt.show()
 
 
 if __name__ == "__main__":
-    mc_output = run_monte_carlo(n_individuals_range)
-
-    # for n_individuals in n_individuals_range:
-    #     print(mc_output[n_individuals])
-    #
-    # for key in mc_output:
-    #     print(mc_output[key])
-
-    # print(mc_output)
+    mc_output = run_monte_carlo(n_individuals_range, [False])
     plot_monte_carlo(mc_output)
+    plt.savefig(f"comparison_false.png", dpi=300)
+
+    mc_output = run_monte_carlo(n_individuals_range, [True])
+    plot_monte_carlo(mc_output)
+    plt.savefig(f"comparison_true.png", dpi=300)
