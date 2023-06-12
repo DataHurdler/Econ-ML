@@ -89,20 +89,21 @@ $$\theta^* = \argmin_{\theta}{G(Q_m, \theta)}$$
 
 通过以上讨论，我们发现，决策树的缺点是很明显的：它可能会有高偏差，也可能会有搞方差。其中高方差的问题，特别严重。这就是为什么需要学习装袋法（bagging）和提升法（boosting）的原因。在实践当中，单棵的决策树通常只会被用来作为算法的一个展示，而很少会被用在实际决策中。
 
-## Bagging and Random Forest
+## 装袋法与随机森林
 
-`Bagging` is one of two ensemble methods based on the decision algorithm. `Bagging` is short for *boostrap aggregation*, which explains what bagging algorithms do: select random subsets from the training data set, fit the decision tree algorithm on each sample, and aggregate to get the final result. There are several variations of `Bagging` algorithms depending on how random samples are drawn:
-1. When random subsets were drawn with replacement (bootstrap), the algorithm is known as `Bagging` (Breiman, 1996)
-2. When random subsets were drawn without replacement, the algorithm is known as `Pasting` (Breiman, 1999)
-3. When random subsets are drawn based on features rather than individuals, the algorithm is known as `Subspaces` (Ho, 1998)
-4. When random subsets are drawn based on both features and individuals, the algorithm is known as `Random Patches` (Louppe and Geurts, 2012)
-5. When random subsets were drawn with replacement (bootstrap) *and* at each split, a random subset of features is chosen, the algorithm is known as `Random Forest` (Breiman, 2001)
+`装袋法`（Bagging）是其中改善决策树的方法方法之一。装袋法是“自助聚合”（boostrap aggregation）的简称。“自助聚合”这个名字能够很好得诠释装袋法的思路：从训练数据集中随机选取子集来跑决策树模型，然后再进行某种形式的加总。装袋法的具体思路取决于子集的构造，以下是常见的几种：
 
-In scikit-learn, the first four algorithms can be implemented in `BaggingClassifier` whereas `Random Forest` is implemented in `RandomForestClassifier`.
+1. 当使用有放回抽样（自助法）抽取随机子集时，该算法被称为“Bagging”（Breiman，1996）。
+2. 当使用无放回抽样抽取随机子集时，该算法被称为“Pasting”（Breiman，1999）。
+3. 当根据特征而不是个体抽取随机子集时，该算法被称为“Subspaces”（Ho，1998）。
+4. 当根据特征和个体同时抽取随机子集时，该算法被称为“Random Patches”（Louppe和Geurts，2012）。
+5. 当使用有放回抽样（自助法）且在每次划分时选择一个随机特征子集时，该算法被称为“Random Forest”（随机森林）（Breiman，2001）。
 
-In bagging algorithms, the "aggregation" of results during prediction is usually taken by votes. For example, suppose you have fit your data with `Random Forest` algorithm with 1,000 trees, and now you want to know whether a new customer is going to buy a small or a large instrument. When the algorithm considers the first split, it will look at all 1,000 trees and see which candidate was used the most. Suppose "Is the customer under 30" appeared in 800 of the trees, then the algorithm would split according to `age=30`. And so, at east split, the algorithm would take a tally from the 1,000 individual trees and act accordingly, just like how one would look at a flow-chart to determine their actions.
+在scikit-learn但中，前面4个算法可以通过`BaggingClassifier`来实现，而`随机森林`则需要用到`RandomForestClassifier`。
 
-While a `Bagging` algorithm helps to reduce bias, the main benefit of bootstrapping is to reduce variance. The `Random Forest` algorithm, for example, is able to reduce variance in two ways: First, bootstrapping random samples is equivalent to consider many different scenarios. Not only does this mean that the algorithm is less reliant on a particular scenario (the whole training data set), it also makes it possible that one or some of the random scenarios may be similar to the "future," i.e., the environment that the algorithm needs to make prediction on. Second, by considering a random set of features at each split, the algorithm is less reliant on certain features, and is hence resilient to "future" cases where certain features may be missing or have errors.
+在使用装袋法时，最后的加总常常通过投票来进行。譬如，你用随机森林算法构造了1000棵决策树来预测顾客是否会购买你的产品。当算法来到第一个分支时，它会找到在1000棵决策树中用得最多的候选方法。譬如，“顾客是否有30岁”被其中800棵决策树选中，那么在算法作预测是，第一个分支就会通过这个来决定，剩下的分支，也如此类推。
+
+装袋法虽然可以减少偏差，但是它最重要的意义在于通过自助的方法来减少方差。譬如，在随机森林算法中，减少方差是通过一下两个途径来实现的：第一，在自助选择随机样本时，随机森林相当于构建了很多不同的情形。这样不仅仅有利于减少算法都某个情形（譬如全样本）的以来，而且这些构建出来的情形中，很有可能有接近“未来”所出现的真实数据。第二，随机森林算法还会考虑随机的变量，这进一步减少了算法依赖某些变量的可能性。这也能够提高算法对别变量缺失的容忍程度。
 
 ## Boosting and AdaBoost
 
