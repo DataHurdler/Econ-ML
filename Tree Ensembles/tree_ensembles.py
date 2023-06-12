@@ -15,7 +15,7 @@ from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import xgboost
 
 N_GROUP = 5
-N_IND = 10000
+N_IND = 50000
 N_FEATURES = 10
 
 
@@ -98,7 +98,7 @@ class TreeModels:
         Returns:
             None
         """
-        # print(clf)
+        print(clf_name)
         clf.fit(self.X_train, self.y_train)
         self.y_pred = clf.predict(self.X_test)
 

@@ -7,12 +7,12 @@ from tree_ensembles import run_tree_ensembles
 
 plt.ion()
 
-n_individuals_range = range(3001, 1000, -1000)
+n_individuals_range = range(50000, 5999, -2000)
 
 
 def run_monte_carlo(n_individuals_range, numeric_only_bool):
 
-    with Pool(cpu_count()-1) as pool:
+    with Pool(1) as pool:
         func = partial(run_tree_ensembles, 5, 10, False, False, numeric_only_bool)
         results = list(pool.imap(func, n_individuals_range))
 
