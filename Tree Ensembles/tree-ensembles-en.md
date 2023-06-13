@@ -210,10 +210,10 @@ from sklearn.ensemble import AdaBoostClassifier
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
-import xgboost as xgb
+import xgboost
 
 N_GROUP = 5
-N_IND = 10000
+N_IND = 50000
 N_FEATURES = 10
 
 
@@ -280,62 +280,110 @@ class TreeModels:
         # Initialize the y_pred variable
         self.y_pred = np.empty([n_individuals, 1])
 
-    def show_results(
-            self,
-            clf,
-    ):
+        # Initialize a dictionary to save results
+        self.results = dict()
+
+    def show_results(self, clf, clf_name, print_flag=False, plot_flag=True):
         """
         Train and evaluate a classifier.
 
         Args:
             clf: Classifier object.
+            clf_name (str): Name of the classifier.
+            print_flag (bool): Whether to print results. Default is False.
+            plot_flag (bool): Whether to draw CM plots and save them. Default is True.
 
         Returns:
             None
         """
-        print(clf)
-        name = [name for name in globals() if globals()[name] is clf][0]
+        print(clf_name)
         clf.fit(self.X_train, self.y_train)
         self.y_pred = clf.predict(self.X_test)
 
-        if clf == logit:
-            print(f'Coefficients: {clf.coef_}')
-        else:
-            print(f'Feature Importance: {clf.feature_importances_}')
-
         # Calculate evaluation metrics
         train_acc = clf.score(self.X_train, self.y_train)
-        print(f'Training accuracy: {train_acc:.4f}')
         acc = accuracy_score(self.y_test, self.y_pred)
-        print(f'Test accuracy: {acc:.4f}')
         precision = precision_score(self.y_test, self.y_pred, average='weighted')
-        print(f'Test precision: {precision:.4f}')
         recall = recall_score(self.y_test, self.y_pred, average='weighted')
-        print(f'Test recall: {recall:.4f}')
         f1 = f1_score(self.y_test, self.y_pred, average='weighted')
-        print(f'Test F1 score: {f1:.4f}')
 
         # Perform cross-validation and print the average score
         cv_score = cross_val_score(clf, self.X, self.y, cv=10)
-        print(f'Average Cross Validation: {np.mean(cv_score)}')
 
-        # Plot the confusion matrix
-        cm = confusion_matrix(self.y_test, self.y_pred, labels=clf.classes_)
-        disp = ConfusionMatrixDisplay(confusion_matrix=cm,
-                                      display_labels=clf.classes_)
-        disp.plot()
-        plt.savefig(f"cm_{name}_{self.numeric_only}.png", dpi=150)
+        if print_flag:
+            if isinstance(clf, LogisticRegression):
+                print(f'Coefficients: {clf.coef_}')
+            else:
+                print(f'Feature Importance: {clf.feature_importances_}')
+            print(f'Training accuracy: {train_acc:.4f}')
+            print(f'Test accuracy: {acc:.4f}')
+            print(f'Test precision: {precision:.4f}')
+            print(f'Test recall: {recall:.4f}')
+            print(f'Test F1 score: {f1:.4f}')
+            print(f'Average Cross Validation: {np.mean(cv_score)}')
+
+        if plot_flag:
+            # Plot the confusion matrix
+            cm = confusion_matrix(self.y_test, self.y_pred, labels=clf.classes_)
+            disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=clf.classes_)
+            disp.plot()
+
+            plt.savefig(f"cm_{clf_name}_{self.numeric_only}.png", dpi=150)
+
         plt.show()
+
+        # Save results in self.result dictionary
+        self.results[clf_name] = {
+            'train_acc': train_acc,
+            'acc': acc,
+            'precision': precision,
+            'recall': recall,
+            'f1_score': f1,
+            'cv_score': np.mean(cv_score)
+        }
+
+
+def run_tree_ensembles(
+        n_group: int = 5,
+        n_num_features: int = 10,
+        print_flag: bool = True,
+        plot_flag: bool = True,
+        numeric_only_bool: list = (False, True),
+        n_individuals: int = 50000,
+) -> dict:
+
+    for i in numeric_only_bool:
+        tree = TreeModels(n_group, n_individuals, n_num_features, numeric_only=i)
+
+        logit = LogisticRegression(max_iter=10000)
+        tree.show_results(logit, 'logit', print_flag, plot_flag)
+
+        d_tree = DecisionTreeClassifier()
+        tree.show_results(d_tree, 'decisiontree', print_flag, plot_flag)
+
+        rf = RandomForestClassifier()
+        tree.show_results(rf, 'randomforest', print_flag, plot_flag)
+
+        ada = AdaBoostClassifier()
+        tree.show_results(ada, 'adaboost', print_flag, plot_flag)
+
+        gbm = GradientBoostingClassifier()
+        tree.show_results(gbm, 'gbm', print_flag, plot_flag)
+
+        xgb = xgboost.XGBClassifier()
+        tree.show_results(xgb, 'xgboost', print_flag, plot_flag)
+
+        return {n_individuals: tree.results}
 ```
 
-Here, two additional columns of numerical features and six columns of string/categorical features are added. The numerical features are stored in the `numpy` array `num_features` while the categorical features are store in `cat_features`. These features are then properly stored and processed in the `pandas` dataframe `pd`:
+The number of numerical features in the generated data set is given by `n_num_features`. Two additional columns of numerical features and six columns of string/categorical features are also included to add randomness and complexity to the generated data. The numerical features are stored in the `numpy` array `num_features` while the categorical features are store in `cat_features`. These features are then properly processed and stored in the `pandas` dataframe `pd`:
 
 * Only the original numerical feature columns are stored (`self.num_features[:, :-2]`);
 * The categorical features are one-hot encoded with `pd.get_dummies`.
 
 In the `if` statement that followed, the `Kmeans` algorithm is called to generate `n_group` classes/clusters.
 
-Additional randomness is then added to the numerical features with:
+Additional randomness is then added to the numerical features by:
 
 ```python
         # Add some random noise to the numerical features
@@ -344,12 +392,83 @@ Additional randomness is then added to the numerical features with:
             self.df[column] = self.df[column] + random.gauss(mu=0, sigma=3)
 ```
 
-The rest of the `TreeModels` class performs the train-test split and adds a method named `show_results()` to run the selected algorithm then print out several performance metrics.
+The rest of the `TreeModels` class performs the train-test split and adds a method named `show_results()` to run the selected algorithm then print out (based on the value of `print_flag`) several performance metrics.
+
+## Confusion Matrix and other Performance Metrics
+
+
 
 ## Comparison the Algorithms
 
+The following `Python` script runs the comparison between different algorithms for 6000 to 50000 individuals:
+
+```python
+import matplotlib.pyplot as plt
+import random
+import pandas as pd
+from multiprocessing import Pool, cpu_count
+from functools import partial
+from tree_ensembles import run_tree_ensembles
+
+plt.ion()
+
+n_individuals_range = range(50000, 5999, -2000)
+
+
+def run_monte_carlo(n_individuals_range, numeric_only_bool):
+
+    with Pool(1) as pool:
+        func = partial(run_tree_ensembles, 5, 10, False, False, numeric_only_bool)
+        results = list(pool.imap(func, n_individuals_range))
+
+    return results
+
+
+def plot_monte_carlo(data: list):
+
+    df_list = []
+    for item in data:
+        for i, inner_dict in item.items():
+            for j, inner_inner_dict in inner_dict.items():
+                value = inner_inner_dict['cv_score']
+                df_list.append({'i': i, 'Model': j, 'cv_score': value})
+
+    df = pd.DataFrame(df_list)
+
+    fig, ax = plt.subplots()
+
+    num_models = len(df['Model'].unique())
+    cmap = plt.get_cmap('Set2')  # Use the Set2 color map
+
+    for i, model in enumerate(df['Model'].unique()):
+        model_data = df[df['Model'] == model]
+        color = cmap(i % num_models)  # Cycle through the color map
+        ax.plot(model_data['i'], model_data['cv_score'], '-o', c=color, label=model, alpha=0.5)
+
+    ax.set_xlabel('Number of Individuals')
+    ax.set_ylabel('Cross Validation Scores')
+    ax.set_title('Plot of Cross Validation Scores')
+    ax.legend(['Logit', 'Decision Tree', 'Random Forest', 'Adaboost', 'GBM', 'XGBoost'],
+              loc='lower right',
+              fontsize=9, markerscale=1.5, scatterpoints=1,
+              fancybox=True, framealpha=0.5)
+```
+
+The script intends to use parallel computing, but since lots of algorithms in `scikit-learn` already utilize parallel computing, we set `Pool(1)` at the end to run it with single thread. Two comparisons, with and without categorical features, are run, and average score from 10-fold cross validations are recorded and plotted. Here is the result from when `kmeans` generated the target groups without using the categorical columns (but they are still in the training data):
+
+![Comparison](comparison_true.png)
+
+A single decision tree performed the worst, while, surprisingly, logistic regression performed the best. Keep in mind that the ups and downs at different sample sizes do not indicate that more data is worse. There is some random components in how the data was generated, namely with `kmeans` algorithm.
+
+When categorical columns are included in generating the target groups, there exists more variations among algorithms:
+
+![Comparison](comparison_false.png)
+
+In here, `Adaboost` performed noticeably worse than all other algorithms. Logistic regression also fell, partly because its inability to deal with categorical features (even with one-hot encoding). Not surprisingly, the performances of `Random Forest`, `Gradient Boosting`, and `XGBoost` remain strong.
+
 ## Summary
-Mention causal tree.
+
+
 
 ## References
 

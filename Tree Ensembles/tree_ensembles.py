@@ -15,7 +15,7 @@ from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import xgboost
 
 N_GROUP = 5
-N_IND = 50000
+N_IND = 20000
 N_FEATURES = 10
 
 
@@ -182,4 +182,4 @@ if __name__ == "__main__":
     # No interruption by plt.show()
     plt.ion()
     random.seed(123)
-    run_tree_ensembles(plot_flag=False)
+    run_tree_ensembles()
