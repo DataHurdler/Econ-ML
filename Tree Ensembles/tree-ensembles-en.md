@@ -398,11 +398,41 @@ The rest of the `TreeModels` class performs the train-test split and adds a meth
 
 ## Confusion Matrix and other Performance Metrics
 
+`Confusion matrix` is the most important and common way to examine the performance of a classification algorithm. It is a matrix showing the numbers of individuals in each true-predicted label combination. In our simulated data, there are 5 classes, which results in a 5-by-5 confusion matrix. Below is the confusion matrix of the test data from the logistic regression. The simulation has included categorical features in generating the target groups:
 
+![Comparison](cm_logit_False.png)
+
+In the confusion matrix, the rows show the "True label" whereas the columns show the "Predicted label". All the cells on the diagonal are corrected predicted. Based on the confusion matrix, there are three basic performance metrics: **accuracy**, **precision**, and **recall**. There are also various metrics that are weighted averages. For example, the **f1 score** is the harmonic mean of precision and recall.
+
+Accuracy is the proportion of individuals that the algorithm has predicted correctly. To calculate the accuracy score, we sum up the values on the diagonal then decide the total:
+
+$$\frac{1884+2769+2945+1553+404}{15000}=0.6370$$
+
+Precision and recall are usually defined based on a certain class. For overall precision and recall scores, we can then take a weighted average. Precision is the proportion of individuals who the algorithm predicted to be a certain class is actually that class. In the above example, 2577 individuals were predicted to be class 0, but only 1884 actually are. As a result, the precision *for class 0* is:
+
+$$\frac{1884}{2577}=0.7311$$
+
+On the other hand, recall is the proportion of individuals who belong to a certain class that the algorithm predicted correctly. IN the above example, 4979 individuals belong to class 2, but only 2945 were predicted correctly by the algorithm. As a result, the recall *for class 2* is:
+
+$$\frac{2945}{4979}=0.5915$$
+
+If we take weighted average of precision and recall of all 5 classes, we get the overall precision and recall scores as 0.6376 and 0.6370, or about 63.7%.
+
+Economics and social sciences often use the terms "Type I" and "Type II" errors, which can be related to the discussion here in a binary classification. In a binary classification, we have 4 quadrants:
+1. True positive (TP): those who belong to the "positive" class and are predicted so;
+2. True negative (TN): those who belong to the "negative" class and are predicted so. True positive and true negative are on the diagonal;
+3. False positive (FP): those who are predicted to be "positive" but are actually "negative';
+4. False negative (FN): those who are predicted to be "negative" but are actually "positive".
+
+Type I error corresponds to false positive and Type II error corresponds to false negative.
+
+Before we move on to formally compare results from the 6 algorithms, it is worth noting that random forest, gradient boosting, and XGBoost performed much better than logistic regression in the above simulated data set (with `random seed = 123`). For example, below is the confusion matrix from XGBoost:
+
+![Comparison](cm_xgboost_False.png)
 
 ## Comparison the Algorithms
 
-The following `Python` script runs the comparison between different algorithms for 6000 to 50000 individuals:
+The following `Python` script runs the comparison between different algorithms for between 6000 and 50000 individuals (sample size):
 
 ```python
 import matplotlib.pyplot as plt
@@ -456,7 +486,7 @@ def plot_monte_carlo(data: list):
               fancybox=True, framealpha=0.5)
 ```
 
-The script intends to use parallel computing, but since lots of algorithms in `scikit-learn` already utilize parallel computing, we set `Pool(1)` at the end to run it with single thread. Two comparisons, with and without categorical features, are run, and average score from 10-fold cross validations are recorded and plotted. Here is the result from when `kmeans` generated the target groups without using the categorical columns (but they are still in the training data):
+The script intends to use parallel computing, but algorithms in `scikit-learn` already utilized parallel computing, we set `Pool(1)` at the end to run it with single thread. Two comparisons, with and without using the categorical features in generating the target groups, are run. The average score from 10-fold cross validations are recorded and plotted. Here is the result from when `kmeans` generated the target groups without using the categorical columns (but they are still in the training data):
 
 ![Comparison](comparison_true.png)
 
@@ -470,7 +500,7 @@ In here, `Adaboost` performed noticeably worse than all other algorithms. Logist
 
 ## Summary
 
-
+(Mention causal Tree?)
 
 ## References
 
