@@ -47,12 +47,13 @@ The simplest way to think about a decision tree algorithm is to consider a flow-
       * Yes: the customer has a 100% chance buying a smaller instruments
       * No: the customer has a 20% chance buying a smaller instruments
 
-You can see several basic elements of a decision tree algorithm:
+You can see several basic elements of a decision tree algorithm from the above example:
+
 1. As expected, the tree algorithm resulted in a hierarchical structure that can be easily represented by a tree diagram;
 2. The tree structure does not need to be symmetrical. For example, when the answer to "is the customer under 50" is a "yes", the branch stopped, resulted in a shorter branch compared to the rest of the tree;
-3. You may use the same feature more than once. In this example, the question "has the customer played any instrument before" has appeared twice;
+3. You may use the same feature more than once. In this example, the question "has the customer played any instrument before" has appeared twice. Also there are two splits based on two different age cutoffs;
 4. You can use both categorical and numerical features. In this example, age is numerical, whereas all other features are categorical;
-5. It is accustomed to split to two branches at each node but no more. If you want three branches, you can do it at the next node: two branches first, then one of the next nodes splits into another 2 branches. Personally, I like keeping it that way. One exception may be at the end node, as there is no further split.
+5. It is accustomed to split to only two branches at each node. If you want three branches, you can do it at the next node: two branches at the first node, then one or both of the next nodes split into another 2 branches.
 
 There are other elements of a decision tree algorithm that you can not observe directly from this example but are very important. We will examine these in more details below.
 
@@ -84,26 +85,27 @@ Before we move on, here is a quick remark: while there exists a global optimum f
 
 ## Pruning
 
-If achieving a "pure" branch, where there remains observations from a single class after a split, minimizes the quality function $G(Q_m, \theta)$, then why did we not achieve that "pure" state in the illustrative music store example? There are two main reasons. First, we may not have enough features. Imagine you have two individuals in your data set, one bought a small instrument and the other bought a large instrument. These two individuals are almost identical: the only difference is in their eye colors. If "eye color" is not one of the features captured in your data set, you will have no way to distinguish these two individuals. On the other hand, imagine we know *everything* about each and every individual, then it is almost guaranteed that you can find a "perfect" tree, such that there is a single class of individuals at each end node. Such "perfect" tree may not be unique. At the extreme, imagine a tree such that each end node represents a single individual.
+If achieving a "pure" branch, where there remains observations from a single class after a split, minimizes the quality function $G(Q_m, \theta)$, then why did we not achieve that "pure" state in the illustrative example with the music store? There are two main reasons. First, we may not have enough features. Imagine you have two individuals in your data set, one bought a small instrument and the other bought a large instrument. These two individuals are almost identical: the only difference is in their eye colors. If "eye color" is not one of the features captured in your data set, you will have no way to distinguish these two individuals. On the other hand, imagine we know *everything* about each and every individual, then it is almost guaranteed that you can find a "perfect" tree, such that there is a single class of individuals at each end node. Such "perfect" tree may not be unique. At the extreme, imagine a tree such that each end node represents a single individual.
 
-The second reason is something we have already covered: the Bias-Variance Tradeoff. Because the ultimate goal is to predict, fitting a "perfect" tree can result in too high of a variance. Continued with the previous example, your ability to build a perfect tree would totally depend on whether you have "eye color" as a feature in your data set. That means that your algorithm is too sensitive to one particular feature - if this feature does not exist, your algorithm would fail to build a "perfect" tree (assuming that was the goal). Or, if this feature is somehow absent or incorrect in the data set you are predicting on, your algorithm would have a breakdown.
+The second reason is something we have discussed: the Bias-Variance Tradeoff. Because the ultimate goal is to predict, fitting a "perfect" tree can result in too high of a variance. Continued with the previous example, your ability to build a perfect tree would totally depend on whether you have "eye color" as a feature in your data set. That means that your algorithm is too sensitive to one particular feature - if this feature does not exist, your algorithm would fail to build a "perfect" tree (assuming that was the goal). Or, if this feature is somehow absent or incorrect in the data set you are predicting on, your algorithm would have a breakdown.
 
-This is why a decision tree needs to be pruned. This is often done by specifying two hyperparameters in the decision tree algorithm: the maximum depth of the tree (`max_depth`) and the minimum number of samples required to split (`min_samples_split`). Without going into the technical details, we can intuitively understand that both of these restrictions can prevent us from splitting the tree to the extreme case such that each end node represents an individual. In other words, they restrict the growth of a tree.
+This is why a decision tree needs to be pruned. This is often done by specifying two hyperparameters in the decision tree algorithm in scikit-learn: the maximum depth of the tree (`max_depth`) and the minimum number of samples required to split (`min_samples_split`). Without going into the technical details, we can intuitively understand that both of these restrictions can prevent us from splitting the tree to the extreme case such that each end node represents an individual. In other words, they restrict the growth of a tree.
 
-The caveat of a single decision tree algorithm is obvious: it can easily suffer from either high bias or high variance, especially the latter. This is why ensemble methods such as **bagging** and **boosting** were invented. In practice, a single decision tree is rarely used anymore, except as a demonstrative example.
+The caveat of a single decision tree algorithm is obvious: it can easily suffer from either high bias or high variance, especially the latter. This is why ensemble methods such as **bagging** and **boosting** were introduced. In practice, a single decision tree is rarely used as the "finale" model. It is often used as a demonstrative example.
 
 ## Bagging and Random Forest
 
-`Bagging` is one of two ensemble methods based on the decision algorithm. `Bagging` is short for *boostrap aggregation*, which explains what bagging algorithms do: select random subsets from the training data set, fit the decision tree algorithm on each sample, and aggregate to get the final result. There are several variations of `Bagging` algorithms depending on how random samples are drawn:
+`Bagging` is one of two ensemble methods based on the decision tree algorithm. `Bagging` is short for *bootstrap aggregation*, which explains what bagging algorithms do: select random subsets from the training data set, fit the decision tree algorithm on each subset, and aggregate to get the prediction. There are several variations of `Bagging` algorithms depending on how random samples are drawn:
+
 1. When random subsets were drawn with replacement (bootstrap), the algorithm is known as `Bagging` (Breiman, 1996)
 2. When random subsets were drawn without replacement, the algorithm is known as `Pasting` (Breiman, 1999)
 3. When random subsets are drawn based on features rather than individuals, the algorithm is known as `Subspaces` (Ho, 1998)
 4. When random subsets are drawn based on both features and individuals, the algorithm is known as `Random Patches` (Louppe and Geurts, 2012)
 5. When random subsets were drawn with replacement (bootstrap) *and* at each split, a random subset of features is chosen, the algorithm is known as `Random Forest` (Breiman, 2001)
 
-In scikit-learn, the first four algorithms can be implemented in `BaggingClassifier` whereas `Random Forest` is implemented in `RandomForestClassifier`.
+In scikit-learn, the first four algorithms are implemented in `BaggingClassifier` whereas `Random Forest` is implemented in `RandomForestClassifier`.
 
-In bagging algorithms, the "aggregation" of results during prediction is usually taken by votes. For example, suppose you have fit your data with `Random Forest` algorithm with 1,000 trees, and now you want to know whether a new customer is going to buy a small or a large instrument. When the algorithm considers the first split, it will look at all 1,000 trees and see which candidate was used the most. Suppose "Is the customer under 30" appeared in 800 of the trees, then the algorithm would split according to `age=30`. And so, at east split, the algorithm would take a tally from the 1,000 individual trees and act accordingly, just like how one would look at a flow-chart to determine their actions.
+In bagging algorithms, the "aggregation" of results during prediction is usually taken by votes. For example, suppose you have fit your data with the `Random Forest` algorithm with 1,000 trees, and now you want to know whether a new customer is going to buy a small or a large instrument. When the algorithm considers the first split, it will look at all 1,000 trees and see which candidate was used the most. Suppose "Is the customer under 30" appeared in 800 of the trees, then the algorithm would split according to `age=30`. And so, at each split, the algorithm would take a tally from the 1,000 individual trees and act accordingly, just like how one would look at a flow-chart to determine actions.
 
 While a `Bagging` algorithm helps to reduce bias, the main benefit of bootstrapping is to reduce variance. The `Random Forest` algorithm, for example, is able to reduce variance in two ways: First, bootstrapping random samples is equivalent to consider many different scenarios. Not only does this mean that the algorithm is less reliant on a particular scenario (the whole training data set), it also makes it possible that one or some of the random scenarios may be similar to the "future," i.e., the environment that the algorithm needs to make prediction on. Second, by considering a random set of features at each split, the algorithm is less reliant on certain features, and is hence resilient to "future" cases where certain features may be missing or have errors.
 
@@ -111,7 +113,7 @@ While a `Bagging` algorithm helps to reduce bias, the main benefit of bootstrapp
 
 While the main benefit of `Bagging` is in reducing variance, the main benefit of `Boosting` is to reduce bias, while maintaining a reasonably low variance. Boosting is able to maintain a low variance because, like Bagging, it also fits many trees. Unlike Bagging, which builds the trees in parallel, Boosting builds them sequentially.
 
-The basic idean of boosting is to have incremental (small/"weak") improvements from the previous model, which is why it is built sequentially. This idea can be applied to all types of algorithms. In the context of decision tree, a boosting algorithm can be demonstrated by the following pseudocode:
+The basic idean of boosting is to have incremental (small/"weak") improvements from the previous model, which is why the learning algorithms are built sequentially. This idea can be applied to all types of algorithms. In the context of decision tree, a boosting algorithm can be demonstrated by the following pseudocode:
 
 ```
 Step 1: Build a simple decision tree (weak learner)
@@ -119,11 +121,11 @@ Step 2: Loop:
             Minimize weighted error
 ```
 
-Currently, there are three main types of tree-based boosting algorithms: `AdaBoost`, `Gradient Boosting`, and `XGBoost`. The different algorithms are different in how to *boost*, i.e., how to implement Step 2.
+Currently, there are three popular types of tree-based boosting algorithms: `AdaBoost`, `Gradient Boosting`, and `XGBoost`. The different algorithms are different in how they *boost*, i.e., how to implement Step 2.
 
-`AdaBoost` was introduced by Freund and Schapire (1995). It is short for *Ada*tive *Boost*ing. `AdaBoost` implement boosting by changing the weights of observations. That is, by making some observations/individuals more important than the other. In a training data set with $N$ individuals, the algorithm begins by weighting each individual the same: $1/N$. Then it fits a simple decision tree model and makes predictions. Inevitably, it makes better decision for some individuals than the other. The algorithm then increases the weight for individuals that it did not make correct/good predictions on in the first model. Effectively, this asks the next decision tree algorithm to focus more on these individuals that it has failed to understand in the first tree. And this process continues until a stopping rule is reached. Such stopping rule can be something like "**stop** when 98% of the cases are correctly predicted".
+`AdaBoost` was introduced by Freund and Schapire (1995). It is short for *Ada*ptive *Boost*ing. `AdaBoost` implements boosting by changing the weights of observations. That is, by making some observations/individuals more important than the other. In a training data set with $N$ individuals, the algorithm begins by weighting each individual the same: at a weight of $1/N$. Then it fits a simple decision tree model and makes predictions. Inevitably, it makes better decision for some individuals than the other. The algorithm then increases the weight for individuals that it did not make correct/good predictions on in the first model. Effectively, this asks the next decision tree algorithm to focus more on these individuals that it has failed to understand in the first tree. And this process continues until a stopping rule is reached. A stopping rule may be, for example, "**stops** when 98% of the individuals are correctly predicted".
 
-It is straightforward to see that a boosting algorithm lowers bias. But was it often able to main a low *variance* too? It was able to do because a boosting algorithm effectively builds different trees at each iteration. When making predictions, it takes a weighted average of the models. Some mathematical details may be helpful.
+It is straightforward to see that a boosting algorithm lowers bias. But was it often able to main a low *variance* too? It was able to do so because a boosting algorithm effectively builds different trees at each iteration. When making predictions, it takes a weighted average of the models. Some mathematical details may be helpful.
 
 Let $w_{ij}$ denote the weight of individual $i$ in stage/iteration $j$. In the beginning of the algorithm, we have $w_{i1}=1/N$ for all $i$ where $N$ is the the total number of individuals. After the first weak tree is built, we can calculate the error/misclassification rate of stage $j$ as
 
@@ -133,11 +135,11 @@ where $I_{ij}(\text{incorrect})$ equals 1 if the prediction for individual $i$ i
 
 $$v_j = \frac{1}{2}\log\left(\frac{1-e_j}{e_j}\right)$$
 
-The stage value is used both in updating $w_{ij+1}$, i.e., the weight of individual $i$ in the next stage, and in acting as the weight of model $j$ when prediction is computed. To update the weight for the next stage/model, we have
+The stage value is used both in updating $w_{ij+1}$, i.e., the weight of individual $i$ in the next stage, and to act as the weight of model $j$ when prediction is computed. To update the weight for the next stage/model, we have
 
 $$w_{ij+1} = w_{ij} \times \exp{(v_j \times I_{ij}(\hat{y}_{ij}=y_i))}$$
 
-where $\hat{y}_{ij}$ is the prediction for individual $i$ in stage $j$ and $y_i$ is the true label for individual $i$. For binary classification, it is conventional to expression $\hat{y}_{ij}$ and $y_i$ as 1 and -1, so that the above equation can be simplified into
+where $\hat{y}_{ij}$ is the prediction for individual $i$ in stage $j$, and $y_i$ is the true label for individual $i$. For binary classification, it is conventional to expression $\hat{y}_{ij}$ and $y_i$ as 1 and -1, so that the above equation can be simplified into
 
 $$w_{ij+1} = w_{ij} \times \exp{(v_j \times \hat{y}_{ij}\times y_i)}$$
 
@@ -155,7 +157,7 @@ where $J$ is the total number of stages.
 
 $$L_j = -2\sum_{N}{y_i\log{(\hat{p}_{ij})} + (1-y_i)\log{(1-\hat{p}_{ij})}}$$
 
-where $N$ is the number of individuals, $y_i$ is the true label for individual $i$, and $\hat{p}_{ij}$ is the predicted probability that individual $i$ at stage $j$ having a label of $y$, and is given by the softmax function (logistic) when log-loss is specified:
+where $N$ is the number of individuals, $y_i$ is the true label for individual $i$, and $\hat{p}_{ij}$ is the predicted probability that individual $i$ at stage $j$ having a label of $y$, and is given by the softmax (logistic) function when log-loss is specified:
 
 $$\hat{p}_{ij} = \frac{\exp{(F_j(x_i))}}{1+\exp{(F_j(x_i))}}$$
 
@@ -163,7 +165,7 @@ where $F_j(x_i)$ is a numerical predicted value for individual $i$ by regressor 
 
 $$F_j(x) = F_{j-1}(x) + h_j(x)$$
 
-where $h_j(x)$ is the weak learner/regressor at stage $j$ that minimizes $L_j$. Substituting $F_M(x)$, the final regressor, into the above formula for $\hat{p}_{ij}$ gives the final prediction of the Gradient Boosting model.
+where $h_j(x)$ is the weak learner/regressor at stage $j$ that minimizes $L_j$. Substituting $F_M(x)$, the final regressor, into the above formula for $\hat{p}_{ij}$ gives the overall prediction of the Gradient Boosting model.
 
 Finally, using first-order Taylor approximation, it can be shown that minimizing $L_j$ is approximately equivalent to predicting the negative gradient of the samples, where the negative gradient for individual $i$ is given by
 
@@ -173,17 +175,17 @@ where $l_{ij-1}$ is the term inside the summation in $L_j$ (but lagged one stage
 
 $$l_{ij-1} = y_i\log{(\hat{p}_{ij-1})} + (1-y_i)\log{(1-\hat{p}_{ij-1})}$$
 
-In other words, while the basic decision tree algorithm aims to predict the true classes, usually represented by 0s and 1s, `Gradient Boosting` aims to predict a numerical value that is the gradient. This means that, at each stage, Gradient Boosting is a regression problem rather than a classification problem. Predicting the gradient allows the algorithm to utilize many well developed methods for such task, for example, the Nelder-Mead method or simple grid search.
+In other words, while the basic decision tree algorithm aims to predict the true classes, usually represented by 0's and 1's, `Gradient Boosting` aims to predict a numerical value which is the gradient. This means that, at each stage, Gradient Boosting is a regression problem rather than a classification problem. Predicting the gradient allows the algorithm to utilize many well developed methods for such task, for example, the Nelder-Mead method or simple grid search.
 
 The discussion above focused on binary classification, which requires a single tree to be built in each stage. In multiclass classification, $K$ trees would be built for $K$ classes. For example, if `Gradient Boosting` is used to identify the 26 English alphabets, 26 trees are built and fitted in each stage.
 
 `XGBoost` was introduced by Tianqi Chen in 2014. It is short for "e*X*treme *G*radient *Boost*ing". Instead of gradient decent, `XGBoost` implements [Newton's Method](https://en.wikipedia.org/wiki/Newton%27s_method), which is computationally much more demanding than gradient decent and requires a second-order Taylor approximation (instead of first-order as in `Gradient Boosting`). Due to this, in addition to **Gradients**, `XGBoost` also calculates the **Hessians**, which are a set of second-order derivatives (whereas gradients are the first-order derivatives).
 
-`Python` library `xgboost` implements `XGBoost` and can be easily integrated with `scikit-learn`, which we use to implement all other algorithms covered in this chapter.
+`Python` library `xgboost` implements `XGBoost` and can easily be integrated with `scikit-learn`, which is the library we use to implement all algorithms covered in this chapter.
 
 ## Python Implementation with scikit-learn
 
-As we have done in other chapters, we will first generate a data set, then fit the data with various algorithms. After we have fitted the models, we will print out some basic performance metrics including feature importance, confusion matrix, accuracy, precision, recall, and F1 scores. We will also conduct a cross validation exercise.
+As we have done in other chapters, we will first generate a data set, then fit the data with various algorithms. After we have fitted the models, we will print out some basic performance metrics, chief among which is the `confusion matrix` and conduct a cross validation exercise.
 
 The algorithms we will consider include:
 * Logistic regression
@@ -376,14 +378,14 @@ def run_tree_ensembles(
         return {n_individuals: tree.results}
 ```
 
-The number of numerical features in the generated data set is given by `n_num_features`. Two additional columns of numerical features and six columns of string/categorical features are also included to add randomness and complexity to the generated data. The numerical features are stored in the `numpy` array `num_features` while the categorical features are store in `cat_features`. These features are then properly processed and stored in the `pandas` dataframe `pd`:
+Here are some remarks about the script. First, the number of numerical features in the generated data set is given by `n_num_features`. Two additional columns of numerical features and six columns of string/categorical features are also included to add randomness and complexity to the generated data. The numerical features are stored in the `numpy` array `num_features` while the categorical features are stored in `cat_features`. These features are then properly processed and stored in the `pandas` dataframe `df`:
 
 * Only the original numerical feature columns are stored (`self.num_features[:, :-2]`);
-* The categorical features are one-hot encoded with `pd.get_dummies`.
+* The categorical features are one-hot encoded with `pd.get_dummies()`.
 
 In the `if` statement that followed, the `Kmeans` algorithm is called to generate `n_group` classes/clusters.
 
-Additional randomness is then added to the numerical features by:
+Additional randomness is added to the numerical features by:
 
 ```python
         # Add some random noise to the numerical features
