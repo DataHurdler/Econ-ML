@@ -500,11 +500,27 @@ In here, `Adaboost` performed noticeably worse than all other algorithms. Logist
 
 ## Summary
 
-(Mention causal Tree?)
+In this chapter, we have covered the decision tree algorithm as well as bagging and boosting algorithms based on decision tree. There are few important takeaways and remarks.
+
+First, ensemble methods is a general method that applies to algorithms beyond tree-based models. You could easily applied the same principle of bagging and boosting on regression models. For example, you can build several regressors with a bootstrap data set, or include only some of the features, or use weighted methods to boost. As a matter of fact, ensemble can also be built between regression and classification algorithms. Gradient Boosting and XGBoost can actually be considered as such ensemble: while the end-goal of the algorithms were to predict classes, at their core, they are regressions.
+
+Second, tree-based models can be used for regression problems. For example, instead of `RandomForestClassifier`, you can use `RandomForestRegressor` for a regression problem. When you are using a classification algorithm on a continuous target. Instead of trying to predict classes, the `RandomForestRegressor`, as well as other classification used for regression problems, aims to predict the mean of the target. We will cover this in more depth in a later chapter.
+
+Third, in general, it is more accurate to predict classes than continuous values. Due to this, the use of classification algorithms may be broader than most expected. For example, it is possible to convert a regression problem (in predicting continuous quantities) to classification problems. The market share example given in the beginning of the chapter is a good example. Another example is e-commerce. Most e-commerce owners have a limited offering. As a result, instead of predicting the sales per month or the dollar value of a customer, it is easier to predict whether and how many a customer would buy. This method can be especially powerful since a business owner often has control over the price of the products.
+
+Lastly, tree-based methods can be used for causal inference. While causal inference itself is a topic of a later chapter, for readers who are familiar with causal inference methods, you can easily find parallel between decision tree and propensity score matching (PSM): individuals who ended up in the same leave have something in common, and hence can provide good matching samples. This is the basic idea behind `causal tree` (Athey and Imbens, 2016).
 
 ## References
 
-* https://scikit-learn.org/stable/modules/tree.html#tree
+* S. Athey and G. Imbens, "Recursive partitioning for heterogeneous causal effects", *PNAS*, 2016.
+* L. Breiman, "Bagging predictors", *Machine Learning*, 1996.
+* L. Breiman, "Pasting small votes for classification in large databases and on-line", *Machine Learning*, 1999.
+* L. Breiman, "Random forest", *Machine Learning*, 2001.
+* Y. Freund and R. Schapire, "A Decision-Theoretic Generalization of on-Line Learning and an Application to Boosting", 1995.
+* J. Friedman, "Greedy Function Approximation: A Gradient Boosting Machine", *The Annals of Statistics*, 2001.
+* T. Ho, "The random subspace method for constructing decision forests", *Pattern Analysis and Machine Intelligence*, 1998.
+* G. Louppe and P. Geurts, "Ensembles on Random Patches", *Machine Learning and Knowledge Discovery in Databases*, 2012.
+* https://scikit-learn.org/stable/modules/tree.html
 * https://xgboost.readthedocs.io/en/stable/tutorials/model.html
 * https://machinelearningmastery.com/boosting-and-adaboost-for-machine-learning/
 * https://stats.stackexchange.com/questions/157870/scikit-binomial-deviance-loss-function
