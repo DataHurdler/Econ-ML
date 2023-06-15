@@ -1,6 +1,6 @@
 <!-- omit in toc -->
 Discrete Choice, Classification, and Tree-Based Ensemble Algorithms
-=============================================================
+==========
 
 *Zijun Luo*
 

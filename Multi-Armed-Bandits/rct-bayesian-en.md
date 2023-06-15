@@ -1,6 +1,6 @@
 <!-- omit in toc -->
 Randomized Controlled Trial, A/B/N Testing, and Multi-Armed Bandit Algorithms
-=============================================================
+==========
 
 *Zijun Luo*
 
