@@ -10,11 +10,9 @@ N_EPISODES = 10000
 # Define the exploration rate
 EXP_RATE = 0.05
 
-# Define payoffs for prisoner's dilemma
-PAYOFFS = [0, 1, 3, 5]
-
-
 class PrisonersDilemma:
+    """Class representing the Prisoner's Dilemma game."""
+
     def __init__(
             self,
             payoffs,
@@ -22,7 +20,15 @@ class PrisonersDilemma:
             num_episodes: int = 10000,
             exploration_rate: float = 0.05,
     ):
+        """
+        Initialize the PrisonersDilemma instance.
 
+        Args:
+            payoffs (list): Payoff values for different choices in the game.
+            num_agents (int): Number of agents in the game.
+            num_episodes (int): Number of episodes to run the game.
+            exploration_rate (float): Exploration rate for agents' action selection.
+        """
         self.num_agents = num_agents
         self.num_episodes = num_episodes
         self.exploration_rate = exploration_rate
@@ -59,7 +65,16 @@ class PrisonersDilemma:
             agent_rewards,
             opponent_rewards,
     ) -> tuple[str, str]:
+        """
+        Perform Q-learning to determine the actions of an agent and its opponent.
 
+        Args:
+            agent_rewards (dict): Accumulated rewards for the agent's strategy.
+            opponent_rewards (dict): Accumulated rewards for the opponent's strategy.
+
+        Returns:
+            tuple[str, str]: Chosen actions for the agent and opponent.
+        """
         agent_action = max(agent_rewards,
                            key=agent_rewards.get) if random.random() > self.exploration_rate else random.choice(
             ['LEFT', 'RIGHT'])
@@ -73,6 +88,12 @@ class PrisonersDilemma:
             self,
             episode: int,
     ) -> None:
+        """
+        Run a single episode of the game.
+
+        Args:
+            episode (int): Episode number.
+        """
         # Track the number of agents choosing LEFT in the current round
         left_count = 0
 
@@ -136,12 +157,12 @@ class PrisonersDilemma:
         assert len(already_played) == self.num_agents
 
     def run_multi_episodes(self) -> None:
+        """Run multiple episodes of the game."""
         for episode in range(self.num_episodes):
             self.run_single_episode(episode)
 
     def plot_all(self) -> None:
-
-        # Save the plot of the percentage of LEFT played in each round as "all.png"
+        """Plot the percentage of LEFT played in each round and save the plot as 'all.png'."""
         plt.plot(range(1, self.num_episodes + 1), self.left_percentage_rounds, linestyle="", marker="o", markersize=2)
         plt.xlabel('Round')
         plt.ylabel('Percentage of LEFT')
@@ -155,20 +176,29 @@ class PrisonersDilemma:
         plt.show()
 
     def top_bottom_agents(self):
-        # Update the top 5 agents based on the accumulated rewards
+        """Print information about the top and bottom 5 agents based on accumulated rewards."""
         top_agents = sorted(range(self.num_agents),
                             key=lambda agent_id: sum(self.rewards_history[agent_id]), reverse=True)[:5]
         bottom_agents = sorted(range(self.num_agents),
                                key=lambda agent_id: sum(self.rewards_history[agent_id]), reverse=False)[:5]
-        # print(top_agents)
-        # print(bottom_agents)
 
         for i, agent_id in enumerate(top_agents + bottom_agents):
             is_top_agent = agent_id in top_agents
             agents_info(self.strategies_history, self.rewards_history, agent_id, is_top_agent)
 
 
-def update_mean(previous_mean, new_value, n_episodes) -> float():
+def update_mean(previous_mean, new_value, n_episodes) -> float:
+    """
+    Update the mean value based on a new value and the number of episodes.
+
+    Args:
+        previous_mean (float): Previous mean value.
+        new_value (float): New value to be incorporated into the mean.
+        n_episodes (int): Number of episodes.
+
+    Returns:
+        float: Updated mean value.
+    """
     return previous_mean + (new_value - previous_mean) / (n_episodes + 1)
 
 
@@ -178,6 +208,15 @@ def agents_info(
         agent_id,
         is_top_agent: bool,
 ) -> None:
+    """
+    Print information about an agent's strategies and rewards.
+
+    Args:
+        strategies_history (dict): Dictionary containing agents' strategy histories.
+        rewards_history (dict): Dictionary containing agents' reward histories.
+        agent_id (int): ID of the agent.
+        is_top_agent (bool): Flag indicating whether the agent is a top agent or bottom agent.
+    """
     left_count = strategies_history[agent_id].count('LEFT')
     right_count = strategies_history[agent_id].count('RIGHT')
     left_total = 0
@@ -200,7 +239,8 @@ def agents_info(
 
 
 if __name__ == "__main__":
-
+    PAYOFFS = [0, 1, 3, 5]
+    random.seed(42)
     PD = PrisonersDilemma(PAYOFFS)
     PD.run_multi_episodes()
     PD.plot_all()
