@@ -10,6 +10,7 @@ N_EPISODES = 10000
 # Define the exploration rate
 EXP_RATE = 0.05
 
+
 class PrisonersDilemma:
     """Class representing the Prisoner's Dilemma game."""
 
