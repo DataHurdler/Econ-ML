@@ -1,15 +1,6 @@
 import random
 import matplotlib.pyplot as plt
 
-# Define the number of agents
-N_AGENTS = 100
-
-# Number of episodes
-N_EPISODES = 10000
-
-# Define the exploration rate
-EXP_RATE = 0.05
-
 
 class PrisonersDilemma:
     """Class representing the Prisoner's Dilemma game."""
@@ -20,6 +11,7 @@ class PrisonersDilemma:
             num_agents: int = 100,
             num_episodes: int = 10000,
             exploration_rate: float = 0.05,
+            trial_ratio: float = 0.01,
     ):
         """
         Initialize the PrisonersDilemma instance.
@@ -30,9 +22,11 @@ class PrisonersDilemma:
             num_episodes (int): Number of episodes to run the game.
             exploration_rate (float): Exploration rate for agents' action selection.
         """
+        assert num_agents % 2 == 0 # check num_agents is an even number
         self.num_agents = num_agents
         self.num_episodes = num_episodes
         self.exploration_rate = exploration_rate
+        self.trial_ratio = trial_ratio
 
         # Define the rewards for different choices
         s, p, r, t = payoffs
@@ -87,12 +81,14 @@ class PrisonersDilemma:
 
     def run_single_episode(
             self,
+            algo: str,
             episode: int,
     ) -> None:
         """
         Run a single episode of the game.
 
         Args:
+            algo (str): The algorithm used to pick action
             episode (int): Episode number.
         """
         # Track the number of agents choosing LEFT in the current round
@@ -119,10 +115,18 @@ class PrisonersDilemma:
             agent_rewards, opponent_rewards = self.rewards_accumulated[agent_id], self.rewards_accumulated[opponent_id]
 
             # Select actions for the agent and opponent based on accumulated rewards and exploration rate
-            if episode == 0:
-                agent_action, opponent_action = ['RIGHT', 'RIGHT']
+            if episode < round(self.trial_ratio * self.num_episodes):
+                if episode == 0:
+                    agent_action, opponent_action = ['RIGHT', 'RIGHT']
+                else:
+                    agent_action = random.choice(['LEFT', 'RIGHT'])
+                    opponent_action = random.choice(['LEFT', 'RIGHT'])
             else:
-                agent_action, opponent_action = self.q_learning(agent_rewards, opponent_rewards)
+                if hasattr(self, algo):
+                    algorithm = getattr(self, algo)
+                    agent_action, opponent_action = algorithm(agent_rewards, opponent_rewards)
+                else:
+                    raise ValueError("Invalid method.")
             # Get the rewards for the chosen actions
             reward_agent, reward_opponent = self.rewards[(agent_action, opponent_action)]
 
@@ -157,10 +161,10 @@ class PrisonersDilemma:
 
         assert len(already_played) == self.num_agents
 
-    def run_multi_episodes(self) -> None:
+    def run_multi_episodes(self, algo: str) -> None:
         """Run multiple episodes of the game."""
         for episode in range(self.num_episodes):
-            self.run_single_episode(episode)
+            self.run_single_episode(algo, episode)
 
     def plot_all(self) -> None:
         """Plot the percentage of LEFT played in each round and save the plot as 'all.png'."""
@@ -241,8 +245,18 @@ def agents_info(
 
 if __name__ == "__main__":
     PAYOFFS = [0, 1, 3, 5]
+    # Define the number of agents
+    N_AGENTS = 100
+    # Number of episodes
+    N_EPISODES = 10000
+    # Define the exploration rate
+    EXP_RATE = 0.02
+    # Define length of trial period in the beginning
+    TRIAL_RATIO = 0.05
+
     random.seed(42)
-    PD = PrisonersDilemma(PAYOFFS)
-    PD.run_multi_episodes()
+
+    PD = PrisonersDilemma(PAYOFFS, N_AGENTS, N_EPISODES, EXP_RATE, TRIAL_RATIO)
+    PD.run_multi_episodes('q_learning')
     PD.plot_all()
     PD.top_bottom_agents()
