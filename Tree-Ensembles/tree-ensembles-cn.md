@@ -105,65 +105,419 @@ $$\theta^* = \argmin_{\theta}{G(Q_m, \theta)}$$
 
 装袋法虽然可以减少偏差，但是它最重要的意义在于通过自助的方法来减少方差。譬如，在随机森林算法中，减少方差是通过一下两个途径来实现的：第一，在自助选择随机样本时，随机森林相当于构建了很多不同的情形。这样不仅仅有利于减少算法都某个情形（譬如全样本）的以来，而且这些构建出来的情形中，很有可能有接近“未来”所出现的真实数据。第二，随机森林算法还会考虑随机的变量，这进一步减少了算法依赖某些变量的可能性。这也能够提高算法对别变量缺失的容忍程度。
 
-## Boosting and AdaBoost
+## 提升法与AdaBoost
 
-While the main benefit of `Bagging` is in reducing variance, the main benefit of `Boosting` is to reduce bias, while maintaining a reasonably low variance. Boosting is able to maintain a low variance because, like Bagging, it also fits many trees. Unlike Bagging, which builds the trees in parallel, Boosting builds them sequentially.
+与装袋法不一样，提升法（Boosting）对降低偏差的效果更显著。但是提升法也能够保证比较低的方差，因为说到底，它也跟装袋法一样会构建很多决策树。但是装袋法的决策树是互相平行的，而提升法的决策树则是序贯（sequential）的。
 
-The basic idean of boosting is to have incremental (small/"weak") improvements from the previous model, which is why it is built sequentially. This idea can be applied to all types of algorithms. In the context of decision tree, a boosting algorithm can be demonstrated by the following pseudocode:
+提升法的基本原理是通过逐步进行提高来优化结果。这个原理可以用于任何的算法上。以下是提升法用在决策树上的伪代码：
+
 ```
 Step 1: Build a simple decision tree (weak learner)
 Step 2: Loop until stopping rule has reached:
             Try to improve from model in the previous iteration
 ```
 
-Currently, there are three main types of tree-based boosting algorithms: `AdaBoost`, `Gradient Boosting`, and `XGBoost`. The different algorithms are different in how to *boost*, i.e., how to implement Step 2.
+目前主要的树状提升算法有三个：`AdaBoost`，`Gradient Boosting`，以及`XGBoost`。
 
-`AdaBoost` was introduced by Freund and Schapire (1995). It is short for *Ada*tive *Boost*ing. `AdaBoost` implement boosting by changing the weights of observations. That is, by making some observations/individuals more important than the other. In a training data set with $N$ individuals, the algorithm begins by weighting each individual the same: $1/N$. Then it fits a simple decision tree model and makes predictions. Inevitably, it makes better decision for some individuals than the other. The algorithm then increases the weight for individuals that it did not make correct/good predictions on in the first model. Effectively, this asks the next decision tree algorithm to focus more on these individuals that it has failed to understand in the first tree. And this process continues until a stopping rule is reached. Such stopping rule can be something like "**stop** when 98% of the cases are correctly predicted".
+`AdaBoost`最早由Freund and Schapire（1995）提出。它的全称是“适应性提升（*Ada*tive *Boost*ing”。Adaboost通过改变观察值的权重来进行提升。换句话说，在算法运行当中，有一些观察值会比另外一些显得更重要。假设训练集包含 $N$ 个个体，那么在最开始的时候每个个体的权重都是一样的：$1/N$。首先算法会跑一个简单的决策树模型，并且根据这个模型进行预测。然后算法会把那些它没有预测准确的观察值的权重增加，因为模型没有成功解释这些个体的行为。这个过程会一直持续，直到算法触发了某个停止规则（stopping rule）。譬如，“如果98%的个体都被解释准确了则停止”。
 
-It is straightforward to see that a boosting algorithm lowers bias. But was it often able to main a low *variance* too? It was able to do because a boosting algorithm effectively builds different trees at each iteration. When making predictions, it takes a weighted average of the models. Some mathematical details may be helpful.
+下面我们来看看AdaBoost的简单数学推导。
 
-Let $w_{ij}$ denote the weight of individual $i$ in stage/iteration $j$. In the beginning of the algorithm, we have $w_{i1}=1/N$ for all $i$ where $N$ is the the total number of individuals. After the first weak tree is built, we can calculate the error/misclassification rate of stage $j$ as
+让 $w_{ij}$ 代表个体 $i$ 在低 $j$ 阶段的权重。在算法最开始的时候，所有 $i$ 的权重都是 $w_{i1}=1/N$。在第 $j$ 轮的决策树跑完之后，我们可以计算出错率：
 
-$$e_j = \frac{\sum_{N}{w_{ij}\times I_{ij}(\text{correct})}}{\sum_{N}{w_{ij}}}$$
+$$e_j = \frac{\sum_{N}{w_{ij}\times I_{ij}(\text{incorrect})}}{\sum_{N}{w_{ij}}}$$
 
-where $I_{ij}(\text{correct})$ equals 1 if the prediction for individual $i$ is correct in stage $j$ and 0 otherwise. We can then calculate the *stage value* of model $j$:
+如果预测准确，那么 $I_{ij}(\text{incorrect})$ 取值为1，否则为0。接下来我们计算阶段 $j$ 的*阶段值*（*stage value*）：
 
-$$v_j = \log\left(\frac{1-e_j}{e_j}\right)$$
+$$v_j = \frac{1}{2}\log\left(\frac{1-e_j}{e_j}\right)$$
 
-The stage value is used both in updating $w_{ij+1}$, i.e., the weight of individual $i$ in the next stage, and in acting as the weight of model $j$ when prediction is computed. To update the weight for the next stage/model, we have
+这个阶段值不仅会在更新 $w_{ij+1}$ 的时候会用到，它也会被用作预测模型 $j$ 时的权重。通过以下式子，我们可以更新权重：
 
-$$w_{ij+1} = w_{ij} \times \exp{(v_j \times I_{ij}(\text{correct}))}$$
+$$w_{ij+1} = w_{ij} \times \exp{(v_j \times I_{ij}(\hat{y}_{ij}=y_i))}$$
 
-To compute the prediction, let $\hat{y}_{ij}$ denote the predict of model/stage $j$ for individual $j$, then the predicted value is calculated by:
+其中 $\hat{y}_{ij}$ 是个体 $i$ 在阶段 $j$ 的预测，$y_i$ 是个体 $i$ 的真实值。在二元分类分体当中，$\hat{y}_{ij}$ 和 $y_i$ 常常取值为1或者-1，这样我们可以将上面权重的式子简化成：
+
+$$w_{ij+1} = w_{ij} \times \exp{(v_j \times \hat{y}_{ij}\times y_i)}$$
+
+从第二阶段开始，AdaBoost的目标是最小化 $e_j$。
+
+最后，我们需要计算模型加权的过的预测值。让 $\hat{y}_{ij}$ 代表个体 $i$ 在阶段 $j$ 的预测值，那么总的预测值则为
 
 $$\hat{y}_{i} = \sum_{J}{\hat{y}_{ij} \times v_j}$$
 
-where $J$ is the total number of stages.
+其中 $J$ 算法所用阶段的总数。
 
 ## Gradient Boosting and XGBoost
 
 `Gradient Boosting` (Friedman, 2001) is another approach to boost. Instead of updating the weight after each stage/model, Gradient Boosting aims to minimize a loss function, using method such as gradient decent. The default loss function in scikit-learn, which is also the most common in practice, is the binomial deviance:
 
-$$LL = -2\sum_{N}{y_i\log{(\hat{p}_{ij})} + (1-y_i)\log{(1-\hat{p}_{ij})}}$$
+$$L_j = -2\sum_{N}{y_i\log{(\hat{p}_{ij})} + (1-y_i)\log{(1-\hat{p}_{ij})}}$$
 
-where $N$ is the number of individuals, $y_i$ is the true label for individual $i$, and $\hat{p}_{ij}$ is the predicted probability that individual $i$ at stage $j$ having a label of $y$.
+where $N$ is the number of individuals, $y_i$ is the true label for individual $i$, and $\hat{p}_{ij}$ is the predicted probability that individual $i$ at stage $j$ having a label of $y$, and is given by the softmax (logistic) function when log-loss is specified:
 
-`XGBoost` was introduced by Tianqi Chen in 2014. It is short for "e*X*treme *G*radient *Boost*ing"
+$$\hat{p}_{ij} = \frac{\exp{(F_j(x_i))}}{1+\exp{(F_j(x_i))}}$$
+
+where $F_j(x_i)$ is a numerical predicted value for individual $i$ by regressor $F_j(x)$. Here, $F_j(x)$ is the aggregated regressor in stage $j$, which is given by
+
+$$F_j(x) = F_{j-1}(x) + h_j(x)$$
+
+where $h_j(x)$ is the weak learner/regressor at stage $j$ that minimizes $L_j$. Substituting $F_M(x)$, the final regressor, into the above formula for $\hat{p}_{ij}$ gives the overall prediction of the Gradient Boosting model.
+
+Finally, using first-order Taylor approximation, it can be shown that minimizing $L_j$ is approximately equivalent to predicting the negative gradient of the samples, where the negative gradient for individual $i$ is given by
+
+$$-g_i = -\left[\frac{\partial l_{ij-1}}{\partial F_{j-1}(x_i)}\right]$$
+
+where $l_{ij-1}$ is the term inside the summation in $L_j$ (but lagged one stage):
+
+$$l_{ij-1} = y_i\log{(\hat{p}_{ij-1})} + (1-y_i)\log{(1-\hat{p}_{ij-1})}$$
+
+In other words, while the basic decision tree algorithm aims to predict the true classes, usually represented by 0's and 1's, `Gradient Boosting` aims to predict a numerical value which is the gradient. This means that, at each stage, Gradient Boosting is a regression problem rather than a classification problem. Predicting the gradient allows the algorithm to utilize many well developed methods for such task, for example, the Nelder-Mead method or simple grid search.
+
+The discussion above focused on binary classification, which requires a single tree to be built in each stage. In multiclass classification, $K$ trees would be built for $K$ classes. For example, if `Gradient Boosting` is used to identify the 26 English alphabets, 26 trees are built and fitted in each stage.
+
+`XGBoost` was introduced by Tianqi Chen in 2014. It is short for "e*X*treme *G*radient *Boost*ing". Instead of gradient decent, `XGBoost` implements [Newton's Method](https://en.wikipedia.org/wiki/Newton%27s_method), which is computationally much more demanding than gradient decent and requires a second-order Taylor approximation (instead of first-order as in `Gradient Boosting`). Due to this, in addition to **Gradients**, `XGBoost` also calculates the **Hessians**, which are a set of second-order derivatives (whereas gradients are the first-order derivatives).
+
+`Python` library `xgboost` implements `XGBoost` and can easily be integrated with `scikit-learn`, which is the library we use to implement all algorithms covered in this chapter.
 
 ## Python Implementation with scikit-learn
 
-## Confusion Matrix
+As we have done in other chapters, we will first generate a data set, then fit the data with various algorithms. After we have fitted the models, we will print out some basic performance metrics, chief among which is the `confusion matrix` and conduct a cross validation exercise.
+
+The algorithms we will consider include:
+* Logistic regression
+* Decision tree classifier
+* Random forest classifier
+* Adaboost classifier
+* Gradient boosting classifier
+* XGBoost
+
+Even though logistic regression is not covered in this chapter, I included it in the Python implementation for comparison purposes. Although not necessary, I use a Python class in this implementation. Here is the full script:
+
+```python
+import random
+import string
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.cluster import KMeans
+from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import AdaBoostClassifier
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+import xgboost
+
+N_GROUP = 5
+N_IND = 50000
+N_FEATURES = 10
+
+
+class TreeModels:
+    def __init__(
+            self,
+            n_group: int = 5,
+            n_individuals: int = 10000,
+            n_num_features: int = 10,
+            numeric_only: bool = False,
+    ):
+        """
+        Initialize the TreeModels class.
+
+        Args:
+            n_group (int): Number of groups. Default is 5.
+            n_individuals (int): Number of individuals. Default is 10000.
+            n_num_features (int): Number of numerical features. Default is 10.
+            numeric_only (bool): Flag to indicate whether to use only numerical features. Default is False.
+
+        Returns:
+            None
+        """
+        print(f'There are {n_individuals} individuals.')
+        print(f'There are {n_group} choices.')
+        print(f'There are {n_num_features} numerical features and 1 categorical feature.')
+
+        self.numeric_only = numeric_only
+
+        # Generate random numerical features and categorical feature
+        self.num_features = np.random.rand(n_individuals, n_num_features + 2)
+        cat_list = random.choices(string.ascii_uppercase, k=6)
+        self.cat_features = np.random.choice(cat_list, size=(n_individuals, 1))
+
+        # Create a DataFrame with numerical features and one-hot encoded categorical feature
+        self.df = pd.DataFrame(self.num_features[:, :-2])
+        self.df['cat_features'] = self.cat_features
+        self.df = pd.get_dummies(self.df, prefix=['cat'])
+        self.df.columns = self.df.columns.astype(str)
+
+        if numeric_only:
+            # Cluster the data based on numerical features only
+            # Logistic regression performs the best in this condition
+            kmeans = KMeans(n_clusters=n_group, n_init="auto").fit(self.num_features)
+            self.df['target'] = kmeans.labels_
+        else:
+            # Cluster the data based on both numerical and categorical features
+            cat_columns = self.df.filter(like='cat')
+            kmeans1 = KMeans(n_clusters=n_group, n_init="auto").fit(cat_columns)
+            kmeans2 = KMeans(n_clusters=n_group, n_init="auto").fit(self.num_features)
+            self.df['target'] = np.floor((kmeans1.labels_ + kmeans2.labels_) / 2)
+
+        # Add some random noise to the numerical features
+        numerical_columns = [str(i) for i in range(n_num_features)]
+        for column in numerical_columns:
+            self.df[column] = self.df[column] + random.gauss(mu=0, sigma=3)
+
+        # Split the data into training and testing sets
+        self.X = self.df.drop(columns=['target'])
+        self.y = self.df['target']
+        self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(
+            self.X, self.y, test_size=0.3, random_state=42)
+
+        # Initialize the y_pred variable
+        self.y_pred = np.empty([n_individuals, 1])
+
+        # Initialize a dictionary to save results
+        self.results = dict()
+
+    def show_results(self, clf, clf_name, print_flag=False, plot_flag=True):
+        """
+        Train and evaluate a classifier.
+
+        Args:
+            clf: Classifier object.
+            clf_name (str): Name of the classifier.
+            print_flag (bool): Whether to print results. Default is False.
+            plot_flag (bool): Whether to draw CM plots and save them. Default is True.
+
+        Returns:
+            None
+        """
+        print(clf_name)
+        clf.fit(self.X_train, self.y_train)
+        self.y_pred = clf.predict(self.X_test)
+
+        # Calculate evaluation metrics
+        train_acc = clf.score(self.X_train, self.y_train)
+        acc = accuracy_score(self.y_test, self.y_pred)
+        precision = precision_score(self.y_test, self.y_pred, average='weighted')
+        recall = recall_score(self.y_test, self.y_pred, average='weighted')
+        f1 = f1_score(self.y_test, self.y_pred, average='weighted')
+
+        # Perform cross-validation and print the average score
+        cv_score = cross_val_score(clf, self.X, self.y, cv=10)
+
+        if print_flag:
+            if isinstance(clf, LogisticRegression):
+                print(f'Coefficients: {clf.coef_}')
+            else:
+                print(f'Feature Importance: {clf.feature_importances_}')
+            print(f'Training accuracy: {train_acc:.4f}')
+            print(f'Test accuracy: {acc:.4f}')
+            print(f'Test precision: {precision:.4f}')
+            print(f'Test recall: {recall:.4f}')
+            print(f'Test F1 score: {f1:.4f}')
+            print(f'Average Cross Validation: {np.mean(cv_score)}')
+
+        if plot_flag:
+            # Plot the confusion matrix
+            cm = confusion_matrix(self.y_test, self.y_pred, labels=clf.classes_)
+            disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=clf.classes_)
+            disp.plot()
+
+            plt.savefig(f"cm_{clf_name}_{self.numeric_only}.png", dpi=150)
+
+        plt.show()
+
+        # Save results in self.result dictionary
+        self.results[clf_name] = {
+            'train_acc': train_acc,
+            'acc': acc,
+            'precision': precision,
+            'recall': recall,
+            'f1_score': f1,
+            'cv_score': np.mean(cv_score)
+        }
+
+
+def run_tree_ensembles(
+        n_group: int = 5,
+        n_num_features: int = 10,
+        print_flag: bool = True,
+        plot_flag: bool = True,
+        numeric_only_bool: list = (False, True),
+        n_individuals: int = 50000,
+) -> dict:
+
+    for i in numeric_only_bool:
+        tree = TreeModels(n_group, n_individuals, n_num_features, numeric_only=i)
+
+        logit = LogisticRegression(max_iter=10000)
+        tree.show_results(logit, 'logit', print_flag, plot_flag)
+
+        d_tree = DecisionTreeClassifier()
+        tree.show_results(d_tree, 'decisiontree', print_flag, plot_flag)
+
+        rf = RandomForestClassifier()
+        tree.show_results(rf, 'randomforest', print_flag, plot_flag)
+
+        ada = AdaBoostClassifier()
+        tree.show_results(ada, 'adaboost', print_flag, plot_flag)
+
+        gbm = GradientBoostingClassifier()
+        tree.show_results(gbm, 'gbm', print_flag, plot_flag)
+
+        xgb = xgboost.XGBClassifier()
+        tree.show_results(xgb, 'xgboost', print_flag, plot_flag)
+
+        return {n_individuals: tree.results}
+```
+
+Here are some remarks about the script. First, the number of numerical features in the generated data set is given by `n_num_features`. Two additional columns of numerical features and six columns of string/categorical features are also included to add randomness and complexity to the generated data. The numerical features are stored in the `numpy` array `num_features` while the categorical features are stored in `cat_features`. These features are then properly processed and stored in the `pandas` dataframe `df`:
+
+* Only the original numerical feature columns are stored (`self.num_features[:, :-2]`);
+* The categorical features are one-hot encoded with `pd.get_dummies()`.
+
+In the `if` statement that followed, the `Kmeans` algorithm is called to generate `n_group` classes/clusters.
+
+Additional randomness is added to the numerical features by:
+
+```python
+        # Add some random noise to the numerical features
+        numerical_columns = [str(i) for i in range(n_num_features)]
+        for column in numerical_columns:
+            self.df[column] = self.df[column] + random.gauss(mu=0, sigma=3)
+```
+
+The rest of the `TreeModels` class performs the train-test split and adds a method named `show_results()` to run the selected algorithm then print out (based on the value of `print_flag`) several performance metrics.
+
+## Confusion Matrix and other Performance Metrics
+
+`Confusion matrix` is the most important and common way to examine the performance of a classification algorithm. It is a matrix showing the numbers of individuals in each true-predicted label combination. In our simulated data, there are 5 classes, which results in a 5-by-5 confusion matrix. Below is the confusion matrix of the test data from the logistic regression. The simulation has included categorical features in generating the target groups:
+
+![Comparison](cm_logit_False.png)
+
+In the confusion matrix, the rows show the "True label" whereas the columns show the "Predicted label". All the cells on the diagonal are corrected predicted. Based on the confusion matrix, there are three basic performance metrics: **accuracy**, **precision**, and **recall**. There are also various metrics that are weighted averages. For example, the **f1 score** is the harmonic mean of precision and recall.
+
+Accuracy is the proportion of individuals that the algorithm has predicted correctly. To calculate the accuracy score, we sum up the values on the diagonal then decide the total:
+
+$$\frac{1884+2769+2945+1553+404}{15000}=0.6370$$
+
+Precision and recall are usually defined based on a certain class. For overall precision and recall scores, we can then take a weighted average. Precision is the proportion of individuals who the algorithm predicted to be a certain class is actually that class. In the above example, 2577 individuals were predicted to be class 0, but only 1884 actually are. As a result, the precision *for class 0* is:
+
+$$\frac{1884}{2577}=0.7311$$
+
+On the other hand, recall is the proportion of individuals who belong to a certain class that the algorithm predicted correctly. IN the above example, 4979 individuals belong to class 2, but only 2945 were predicted correctly by the algorithm. As a result, the recall *for class 2* is:
+
+$$\frac{2945}{4979}=0.5915$$
+
+If we take weighted average of precision and recall of all 5 classes, we get the overall precision and recall scores as 0.6376 and 0.6370, or about 63.7%.
+
+Economics and social sciences often use the terms "Type I" and "Type II" errors, which can be related to the discussion here in a binary classification. In a binary classification, we have 4 quadrants:
+1. True positive (TP): those who belong to the "positive" class and are predicted so;
+2. True negative (TN): those who belong to the "negative" class and are predicted so. True positive and true negative are on the diagonal;
+3. False positive (FP): those who are predicted to be "positive" but are actually "negative';
+4. False negative (FN): those who are predicted to be "negative" but are actually "positive".
+
+Type I error corresponds to false positive and Type II error corresponds to false negative.
+
+Before we move on to formally compare results from the 6 algorithms, it is worth noting that random forest, gradient boosting, and XGBoost performed much better than logistic regression in the above simulated data set (with `random seed = 123`). For example, below is the confusion matrix from XGBoost:
+
+![Comparison](cm_xgboost_False.png)
 
 ## Comparison the Algorithms
 
+The following `Python` script runs the comparison between different algorithms for between 6000 and 50000 individuals (sample size):
+
+```python
+import matplotlib.pyplot as plt
+import random
+import pandas as pd
+from multiprocessing import Pool, cpu_count
+from functools import partial
+from tree_ensembles import run_tree_ensembles
+
+plt.ion()
+
+n_individuals_range = range(50000, 5999, -2000)
+
+
+def run_monte_carlo(n_individuals_range, numeric_only_bool):
+
+    with Pool(1) as pool:
+        func = partial(run_tree_ensembles, 5, 10, False, False, numeric_only_bool)
+        results = list(pool.imap(func, n_individuals_range))
+
+    return results
+
+
+def plot_monte_carlo(data: list):
+
+    df_list = []
+    for item in data:
+        for i, inner_dict in item.items():
+            for j, inner_inner_dict in inner_dict.items():
+                value = inner_inner_dict['cv_score']
+                df_list.append({'i': i, 'Model': j, 'cv_score': value})
+
+    df = pd.DataFrame(df_list)
+
+    fig, ax = plt.subplots()
+
+    num_models = len(df['Model'].unique())
+    cmap = plt.get_cmap('Set2')  # Use the Set2 color map
+
+    for i, model in enumerate(df['Model'].unique()):
+        model_data = df[df['Model'] == model]
+        color = cmap(i % num_models)  # Cycle through the color map
+        ax.plot(model_data['i'], model_data['cv_score'], '-o', c=color, label=model, alpha=0.5)
+
+    ax.set_xlabel('Number of Individuals')
+    ax.set_ylabel('Cross Validation Scores')
+    ax.set_title('Plot of Cross Validation Scores')
+    ax.legend(['Logit', 'Decision Tree', 'Random Forest', 'Adaboost', 'GBM', 'XGBoost'],
+              loc='lower right',
+              fontsize=9, markerscale=1.5, scatterpoints=1,
+              fancybox=True, framealpha=0.5)
+```
+
+The script intends to use parallel computing, but algorithms in `scikit-learn` already utilized parallel computing, we set `Pool(1)` at the end to run it with single thread. Two comparisons, with and without using the categorical features in generating the target groups, are run. The average score from 10-fold cross validations are recorded and plotted. Here is the result from when `kmeans` generated the target groups without using the categorical columns (but they are still in the training data):
+
+![Comparison](comparison_true.png)
+
+A single decision tree performed the worst, while, surprisingly, logistic regression performed the best. Keep in mind that the ups and downs at different sample sizes do not indicate that more data is worse. There is some random components in how the data was generated, namely with `kmeans` algorithm.
+
+When categorical columns are included in generating the target groups, there exists more variations among algorithms:
+
+![Comparison](comparison_false.png)
+
+In here, `Adaboost` performed noticeably worse than all other algorithms. Logistic regression also fell, partly because its inability to deal with categorical features (even with one-hot encoding). Not surprisingly, the performances of `Random Forest`, `Gradient Boosting`, and `XGBoost` remain strong.
+
 ## Summary
-Mention causal tree.
+
+In this chapter, we have covered the decision tree algorithm as well as bagging and boosting algorithms based on decision tree. There are few important takeaways and remarks.
+
+First, ensemble methods is a general method that applies to algorithms beyond tree-based models. You could easily applied the same principle of bagging and boosting on regression models. For example, you can build several regressors with a bootstrap data set, or include only some of the features, or use weighted methods to boost. As a matter of fact, ensemble can also be built between regression and classification algorithms. Gradient Boosting and XGBoost can actually be considered as such ensemble: while the end-goal of the algorithms were to predict classes, at their core, they are regressions.
+
+Second, tree-based models can be used for regression problems. For example, instead of `RandomForestClassifier`, you can use `RandomForestRegressor` for a regression problem. When you are using a classification algorithm on a continuous target. Instead of trying to predict classes, the `RandomForestRegressor`, as well as other classification used for regression problems, aims to predict the mean of the target. We will cover this in more depth in a later chapter.
+
+Third, in general, it is more accurate to predict classes than continuous values. Due to this, the use of classification algorithms may be broader than most expected. For example, it is possible to convert a regression problem (in predicting continuous quantities) to classification problems. The market share example given in the beginning of the chapter is a good example. Another example is e-commerce. Most e-commerce owners have a limited offering. As a result, instead of predicting the sales per month or the dollar value of a customer, it is easier to predict whether and how many a customer would buy. This method can be especially powerful since a business owner often has control over the price of the products.
+
+Lastly, tree-based methods can be used for causal inference. While causal inference itself is a topic of a later chapter, for readers who are familiar with causal inference methods, you can easily find parallel between decision tree and propensity score matching (PSM): individuals who ended up in the same leave have something in common, and hence can provide good matching samples. This is the basic idea behind `causal tree` (Athey and Imbens, 2016).
 
 ## References
 
-* https://scikit-learn.org/stable/modules/tree.html#tree
+* S. Athey and G. Imbens, "Recursive partitioning for heterogeneous causal effects", *PNAS*, 2016.
+* L. Breiman, "Bagging predictors", *Machine Learning*, 1996.
+* L. Breiman, "Pasting small votes for classification in large databases and on-line", *Machine Learning*, 1999.
+* L. Breiman, "Random forest", *Machine Learning*, 2001.
+* Y. Freund and R. Schapire, "A Decision-Theoretic Generalization of on-Line Learning and an Application to Boosting", 1995.
+* J. Friedman, "Greedy Function Approximation: A Gradient Boosting Machine", *The Annals of Statistics*, 2001.
+* T. Ho, "The random subspace method for constructing decision forests", *Pattern Analysis and Machine Intelligence*, 1998.
+* G. Louppe and P. Geurts, "Ensembles on Random Patches", *Machine Learning and Knowledge Discovery in Databases*, 2012.
+* https://scikit-learn.org/stable/modules/tree.html
 * https://xgboost.readthedocs.io/en/stable/tutorials/model.html
-* https://www.nvidia.com/en-us/glossary/data-science/xgboost/
 * https://machinelearningmastery.com/boosting-and-adaboost-for-machine-learning/
 * https://stats.stackexchange.com/questions/157870/scikit-binomial-deviance-loss-function
 * https://www.ccs.neu.edu/home/vip/teach/MLcourse/4_boosting/slides/

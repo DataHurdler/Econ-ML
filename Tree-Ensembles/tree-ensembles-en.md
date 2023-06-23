@@ -145,7 +145,7 @@ $$w_{ij+1} = w_{ij} \times \exp{(v_j \times \hat{y}_{ij}\times y_i)}$$
 
 At each stage $j(>1)$, the `AdaBoost` algorithm aims to minimize $e_j$.
 
-To compute the overall/final prediction, let $\hat{y}_{ij}$ denote the prediction of model/stage $j$ for individual $j$, then the predicted value is calculated by:
+To compute the overall/final prediction, let $\hat{y}_{ij}$ denote the prediction of model/stage $j$ for individual $i$, then the predicted value is calculated by:
 
 $$\hat{y}_{i} = \sum_{J}{\hat{y}_{ij} \times v_j}$$
 
