@@ -13,15 +13,11 @@ from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.preprocessing import StandardScaler
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
-# plan for the class
-# accepted inputs: stock_name, start_date, end_date
-# dataframes should be stored in a dictionary
-# three methods: ExponentialSmoothing, VAR, and auto arima (pmdarima/pm)
-# HOW TO BUILD THE WALK-FORWARD VALIDATION SO IT WORKS FOR ALL METHODS?
 
-# plotting functions outside of class
+# HOW TO BUILD THE WALK-FORWARD VALIDATION SO IT WORKS FOR ALL METHODS?
 
 
 def prepare_data(
@@ -42,8 +38,12 @@ def plot_fitted_forecast(
         model_result,
         col=None,
         forecast_df=None,
+        arima=False,
 ):
-    if forecast_df is None:
+    if arima:
+        df.loc[train_idx, 'fitted'] = model_result.predict_in_sample(end=-1)
+        df.loc[test_idx, 'forecast'] = np.array(model_result.predict(n_periods=N_TEST, return_conf_int=False))
+    elif forecast_df is None:
         df.loc[train_idx, 'fitted'] = model_result.fittedvalues
         df.loc[test_idx, 'forecast'] = np.array(model_result.forecast(N_TEST))
     else:
@@ -51,13 +51,15 @@ def plot_fitted_forecast(
         df.loc[train_idx, 'fitted'] = model_result.fittedvalues[col]
         df.loc[test_idx, 'forecast'] = forecast_df[col].values
 
-    df[[f"{col}", 'fitted', 'forecast']][-108:].plot(figsize=(15, 5))
+    df = df[-108:]  # only plot the last 108 days
+
+    fig, ax = plt.subplots(figsize=(15, 5))
+    ax.plot(df.index, df[f"{col}"], label='data')
+    ax.plot(df.index, df['fitted'], label='fitted')
+    ax.plot(df.index, df['forecast'], label='forecast')
+
     plt.legend()
     plt.show()
-#
-# last_10_values = df_UAL['ETSfitted'].tail(N_test)
-# df_UAL.loc[last_10_values.index, 'ETSfitted'].plot(style='r', label='Prediction')
-# plt.legend()
 
 
 class StocksForecast:
@@ -84,10 +86,57 @@ class StocksForecast:
         model = ExponentialSmoothing(train[col].dropna(),
                                      trend='add',
                                      seasonal='add',
-                                     seasonal_periods=252,)
+                                     seasonal_periods=252, )
         result = model.fit()
 
         plot_fitted_forecast(self.dfs[stock_name], train_idx, test_idx, result, col)
+
+    def walkforward(
+            self,
+            h,
+            steps,
+            tuple_of_option_lists,
+            stock_name='UAL',
+            col='Close',
+            debug: bool = False,
+    ):
+        # store errors
+        errors = []
+        seen_last = False
+        steps_completed = 0
+        df = self.dfs[stock_name]
+        Ntest = len(df) - h - steps + 1
+
+        trend_type, seasonal_type = tuple_of_option_lists
+
+        for end_of_train in range(Ntest, len(df) - h + 1):
+            train = df.iloc[:end_of_train]
+            test = df.iloc[end_of_train:end_of_train + h]
+
+            if test.index[-1] == df.index[-1]:
+                seen_last = True
+
+            steps_completed += 1
+
+            hw = ExponentialSmoothing(
+                train[col],
+                trend=trend_type,
+                seasonal=seasonal_type,
+                seasonal_periods=40,
+            )
+
+            result_hw = hw.fit()
+
+            forecast = result_hw.forecast(h)
+            error = mean_squared_error(test[col], np.array(forecast))
+            errors.append(error)
+
+        if debug:
+            print("seen_last:", seen_last)
+            print("steps completed:", steps_completed)
+
+        return np.mean(errors)
+        pass
 
     def run_var(
             self,
@@ -113,9 +162,9 @@ class StocksForecast:
 
         cols = ['Scaled_' + value for value in stock_cols]
 
-        # plot_acf(train['Scaled_ual'])
-        # plot_pacf(train['Scaled_ual'])
-        # plot_pacf(train['Scaled_pfe'])
+        plot_acf(train[cols[0]])
+        plot_pacf(train[cols[0]])
+        plot_pacf(train[cols[-1]])
 
         model = VAR(train[cols])
         result = model.fit(maxlags=40, method='mle', ic='aic')
@@ -125,131 +174,68 @@ class StocksForecast:
         forecast_df = pd.DataFrame(result.forecast(prior, N_TEST), columns=cols)
 
         plot_fitted_forecast(df_all, train_idx, test_idx, result, stock_cols[0], forecast_df)
-        #
-        # train_pred = df_all.loc[train_idx, 'var_pred_ual'].iloc[lag_order:]
-        # train_true = df_all.loc[train_idx, 'Scaled_ual'].iloc[lag_order:]
-        #
-        # print("Train R2: ", r2_score(train_true, train_pred))
-        #
-        # test_pred = df_all.loc[test_idx, 'var_forecast_ual']
-        # test_true = df_all.loc[test_idx, 'Scaled_ual']
-        # print("Test R2:", r2_score(test_true, test_pred))
+
+        df_all.loc[train_idx, 'fitted'] = result.fittedvalues[cols[0]]
+        df_all.loc[test_idx, 'forecast'] = forecast_df[cols[0]].values
+
+        train_pred = df_all.loc[train_idx, 'fitted'].iloc[lag_order:]
+        train_true = df_all.loc[train_idx, cols[0]].iloc[lag_order:]
+
+        print("VAR Train R2: ", r2_score(train_true, train_pred))
+
+        test_pred = df_all.loc[test_idx, 'forecast']
+        test_true = df_all.loc[test_idx, cols[0]]
+        print("VAR Test R2:", r2_score(test_true, test_pred))
 
     def run_arima(
-            self
+            self,
+            stock_name='UAL',
+            col='Close',
+            seasonal: bool = True,
+            m: int = 12,
     ):
-        pass
+        train, test, train_idx, test_idx = prepare_data(self.dfs[stock_name])
 
-# # Auto ARIMA
-#
-# arima_model = pm.auto_arima(train['ual'],
-#                             trace=True,
-#                             suppress_warning=True,
-#                             seasonal=True,
-#                             m=12)
-#
-# arima_model.summary()
-#
-# test_pred, confint = arima_model.predict(n_periods=Ntest, return_conf_int=True)
-#
-# fig, ax = plt.subplots(figsize=(15, 5))
-# ax.plot(test.index, test['ual'], label='data')
-# ax.plot(test.index, test_pred, label='forecast')
-# ax.fill_between(test.index, confint[:,0], confint[:,1],
-#                 color='red', alpha=.3)
-# ax.legend()
-#
-# train_pred = arima_model.predict_in_sample(end=-1)
-#
-# fig, ax = plt.subplots(figsize=(15, 5))
-# ax.plot(df_all.index, df_all['ual'], label='data')
-# ax.plot(train.index[12:], train_pred[12:], label='fitted')
-# ax.plot(test.index, test_pred, label='forecast')
-# ax.fill_between(test.index, confint[:,0], confint[:,1],
-#                 color='red', alpha=.3)
-# ax.legend()
+        model = pm.auto_arima(train[col],
+                              trace=True,
+                              suppress_warning=True,
+                              seasonal=seasonal,
+                              m=m)
 
+        print(model.summary())
 
-
-
-
-# # Walk-forward Validation (Lazy Programmer)
-#
-# h = 20 # 4 weeks
-# steps = 10
-# Ntest = len(df_UAL) - h - steps + 1
-#
-# # Hyperparameters to try
-# trend_type_list = ['add', 'mul']
-# seasonal_type_list = ['add', 'mul']
-# init_method_list = ['estimated', 'heuristic', 'legacy-heristic']
-# use_boxcox_list = [True, False, 0]
-#
-# def walkforward(
-#     df,
-#     col,
-#     trend_type,
-#     seasonal_type,
-#     debug=False,
-# ):
-#   # store errors
-#   errors = []
-#   seen_last = False
-#   steps_completed = 0
-#
-#   for end_of_train in range(Ntest, len(df) - h + 1):
-#     train = df.iloc[:end_of_train]
-#     test = df.iloc[end_of_train:end_of_train + h]
-#
-#     if test.index[-1] == df.index[-1]:
-#       seen_last = True
-#
-#     steps_completed += 1
-#
-#     hw = ExponentialSmoothing(
-#         train[col],
-#         trend=trend_type,
-#         seasonal=seasonal_type,
-#         seasonal_periods=40,
-#     )
-#
-#     result_hw = hw.fit()
-#
-#     forecast = result_hw.forecast(h)
-#     error = mean_squared_error(test[col], np.array(forecast))
-#     errors.append(error)
-#
-#   if debug:
-#       print("seen_last:", seen_last)
-#       print("steps completed:", steps_completed)
-#
-#   return np.mean(errors)
-#
-# tuple_of_option_lists = (trend_type_list, seasonal_type_list,)
-#
-# best_score = float('inf')
-# best_options = None
-#
-# for x in itertools.product(*tuple_of_option_lists):
-#   score = walkforward(df_UAL, "Close", *x)
-#
-#   if score < best_score:
-#     print("Best score so far:", score)
-#
-#     best_score = score
-#     best_options = x
-#
-# trend_type, seasonal_type = best_options
-# print(trend_type)
-# print(seasonal_type)
-#
-#
+        plot_fitted_forecast(self.dfs[stock_name], train_idx, test_idx, model, col, arima=True)
 
 
 if __name__ == "__main__":
-    N_TEST = 20
+    N_TEST = 10
+    H = 20  # 4 weeks
+    STEPS = 10
+
+    # Hyperparameters to try
+    trend_type_list = ['add', 'mul']
+    seasonal_type_list = ['add', 'mul']
+    init_method_list = ['estimated', 'heuristic', 'legacy-heristic']
+    use_boxcox_list = [True, False, 0]
 
     ts = StocksForecast()
 
-    ts.run_ets('UAL', col='Log')
+    ts.run_ets(stock_name='UAL', col='Log')
     ts.run_var(col='Log')
+    ts.run_arima(stock_name='UAL', col='Log')
+
+    tuple_of_option_lists = (trend_type_list, seasonal_type_list,)
+    best_score = float('inf')
+    best_options = None
+
+    for x in itertools.product(*tuple_of_option_lists):
+        score = ts.walkforward(h=H, steps=STEPS, stock_name='UAL', col='Log', tuple_of_option_lists=x)
+
+        if score < best_score:
+            print("Best score so far:", score)
+            best_score = score
+            best_options = x
+
+    trend_type, seasonal_type = best_options
+    print(trend_type)
+    print(seasonal_type)
