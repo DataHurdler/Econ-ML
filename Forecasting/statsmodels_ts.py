@@ -13,12 +13,15 @@ from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.preprocessing import StandardScaler
 
 import warnings
-
 warnings.filterwarnings("ignore")
 
 
-# HOW TO BUILD THE WALK-FORWARD VALIDATION SO IT WORKS FOR ALL METHODS?
-
+# TODO:BUILD THE WALK-FORWARD VALIDATION SO IT WORKS FOR ALL METHODS
+# Other things that may be of interest:
+# boxcox: rom scipy.stats import boxcox
+# Test for stationarity: from statsmodels.tsa.stattools import adfuller
+# VARMAX: from statsmodels.tsa.statespace.varmax import VARMAX
+# ARIMA: from statsmodels.tsa.arima.model import ARIMA
 
 def prepare_data(
         df,
@@ -84,8 +87,8 @@ class StocksForecast:
         train, test, train_idx, test_idx = prepare_data(self.dfs[stock_name])
 
         model = ExponentialSmoothing(train[col].dropna(),
-                                     trend='add',
-                                     seasonal='add',
+                                     trend='mul',
+                                     seasonal='mul',
                                      seasonal_periods=252, )
         result = model.fit()
 
