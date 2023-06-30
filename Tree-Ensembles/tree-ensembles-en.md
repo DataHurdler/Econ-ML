@@ -6,13 +6,13 @@ Discrete Choice, Classification, and Tree-Based Ensemble Algorithms
 
 ## Introduction
 
-Suppose you are the owner of an e-commerce website that sells a musical instrument in 5 sizes: soprano, alto, tenor, bass, and contrabass. You are now considering to open up some physical stores. With physical stores, you need to make more careful inventory decisions. Based on your past experience in shipping out your instruments, you are convinced that different communities can have different tastes toward different sizes. And you want to make inventory decisions accordingly.
+Suppose you are the owner of an e-commerce website that sells a musical instrument in 5 sizes: soprano, alto, tenor, bass, and contrabass. You are considering to open up some physical stores. With physical stores, you need to make more careful inventory decisions. Based on your past experience in shipping out your instruments, you are convinced that different communities can have different tastes toward different sizes. And you want to make inventory decisions accordingly.
 
-If the stake for a musical store is too small, consider the classic discrete choice example: automobiles. Ultimately, we want to understand the question of "who buys what." This can inform many business decisions, not only inventory, since the aggregation of individuals tells us the demand of a product in a market. Discrete choice is different from decisions about "how much," for example, do I exercise 15 minutes or 25 minutes tonight?
+If the stake for a musical store is too small, consider the classic discrete choice example: automobiles. Sales of different types of automobiles are different among U.S. states, for example, more trucks are sold in Texas than most other states. In such circumstance, answering the question of "what" is more important than "how many", as most consumers buy a single unit of the item. This scenario is known as "discrete choice" in economics and social sciences. Being able to make a good prediction on such question can inform many business decisions, not only inventory, since the aggregation of individual purchases tells us about the overall demand of a product in a market.
 
-In economics and social sciences, the popular approaches are "top-down": it starts with a understanding of the data-generating process and some assumptions. Logit and Probit are two widely used models in economics. If the error term is believed to follow a logistic distribution, then use the logit model or logistic regression. If the error term is believed to follow a normal distribution, then use the probit model. If there is nested structure, then use nested-logit. And so on.
+In economics and social sciences, the popular approaches to model discrete choice are "top-down": it starts with an understanding of the data-generating process and some assumptions. Logit and Probit are two widely used models in economics. If the error term is believed to follow a logistic distribution, then use the logit model or logistic regression. If the error term is believed to follow a normal distribution, then use the probit model. If there is nested structure, then use nested-logit. And so on.
 
-This is fine, since the focus of economics and social sciences is hypothesis testing and to understand mechanisms. On the contrary, the machine learning approach is *bottom-up*: it cares about making good predictions. In a way, the economics "top-down" approach of discrete choice modeling cares much more about "bias" whereas the machine learning approach considers the bias-variance tradeoff more holistically.
+This is fine, since the focus of economics and social sciences is hypothesis testing and to understand mechanisms. On the contrary, the machine learning approach is more *bottom-up*: it mostly cares about making good predictions. In other words, we can say that the economics "top-down" approach of discrete choice modeling cares much more about "bias" whereas the machine learning approach considers the bias-variance tradeoff more holistically.
 
 ## The Bias-Variance Tradeoff
 
@@ -20,42 +20,42 @@ Let's begin with *Variance*. A model with a high variance is sensitive to the *t
 
 A model that can capture fine details is almost guaranteed to have low *bias*. A model with low bias is one that explains the known, or training, data well. In order to predict, we need our machine learning model to learn from known data. A model with high bias can rarely predict well.
 
-While models with low bias *and* low variance do exist, they are rare. Since a model with high bias rarely works well, lowering bias is often considered the first-order task. One way to do so is using models, or specifying hyperparameters of a model, such that more fine details in the data are taken in to consideration. By doing so, higher variance is introduced. And hence the trade off.
+While models with low bias *and* low variance do exist, they are rare. Since a model with high bias rarely works well, lowering bias is often considered the first-order task. One way to do so is using models, or specifying hyperparameters of a model, such that more fine details in the data are captured. By so doing, higher variance is introduced. And hence the trade-off.
 
-Consider the following example: a zoo wants to build a machine learning algorithm to detect penguin species and deploy it on their smart phone application. Let's say all that the zoo and its users care about is to tell apart King, Magellanic, and Macaroni penguins. The zoo's staffs and data scientists took hundreds of photos of penguins in their aquarium, split the penguins into training and test datasets, as how tasks like this are usually performed, and built the machine learning model. In their test, with photos that they have set aside earlier, they find that the algorithm is able to identify the penguins correctly 98% of the time.
+Consider the following example: a zoo wants to build a machine learning algorithm to detect penguin species and deploy it on their smart phone application. Let's say all that the zoo and the users care about is to tell apart King, Magellanic, and Macaroni penguins. The zoo's staffs and data scientists took hundreds of photos of penguins in their aquarium, split the penguins into training and test datasets as how tasks like this are usually performed, and built the machine learning model. In their test, with photos that they have set aside earlier, they find that the algorithm is able to identify the penguins correctly 98% of the time. They were happy with the result and so deployed it.
 
-However, when their users use the algorithm to identify penguins in other zoos, the algorithm fails miserably. Why? It turns out that the machine learning algorithm was not learning to identify penguins by their different features such as head, neck, and tails. Instead, the algorithm identifies the different species of penguins by the tag on their wings: blue is for King penguin, red for Magellanic, and yellow for Macaroni. These are the colors used by the zoo who developed the algorithm, but different zoos have different tags. As a result, this algorithm, which has low bias but high variance, is unable to predict or detect the species of penguins outside of the zoo where photos for developing the machine learning model were taken.
+However, when users use the application to identify penguins in other zoos, the algorithm fails miserably. Why? It turns out that the machine learning algorithm was not learning to identify penguins by their different features such as head, neck, and tail. Instead, the algorithm identifies the different species of penguins by the tag on their wings: blue is King penguin, red Magellanic, and yellow Macaroni. These are the colors used by the zoo that developed the algorithm, but other zoos have different tags. As a result, this algorithm, which has low bias but high variance due to its dependency on penguins in a single aquarium, is unable to predict or detect the species of penguins outside of the training data.
 
 As we will see next, tree-based algorithms are extremely prone to high variance, or *over-fitting*.
 
 ## Decision Tree
 
-Let's first talk about the basic decision tree algorithm. Because we will be using [scikit-learn](https://scikit-learn.org/stable/) for `Python` implementation in this chapter, I am using notations and languages similar to that in scikit-learn's documentations. It should be mentioned at the outset that this is not a comprehensive lecture on the decision tree algorithm. You can easily find more in-depth discussions in books such as [An Introduction to Statistical Learning](https://www.statlearning.com/) and [The Elements of Statistical Learning](https://hastie.su.domains/ElemStatLearn/), or other online learning sources. Our focuses here are aspects of the decision tree algorithm that matter the most for the understanding of the ensemble methods and their applications in economics and business.
+Let's first talk about the basic decision tree algorithm. Because we will be using [scikit-learn](https://scikit-learn.org/stable/) for `Python` implementation in this chapter, I am using notations and languages similar to that in scikit-learn's documentation. It should be mentioned at the outset that this is not a comprehensive lecture on the decision tree algorithm. You can easily find more in-depth discussions in books such as [An Introduction to Statistical Learning](https://www.statlearning.com/) and [The Elements of Statistical Learning](https://hastie.su.domains/ElemStatLearn/), or other online learning sources. The focus in this session is aspects of the decision tree algorithm that matter the most for the understanding of the ensemble methods and their applications in economics and business.
 
-The simplest way to think about a decision tree algorithm is to consider a flow-chart, especially one that is for diagnostic purposes. Instead of someone building a flow-chart from intuition or experience, we feed data into the computer and the decision tree algorithm would build a flow-chart to explain the data. For example, if we know some characteristics of consumers of the music store, and want to know who is more likely to buy the smaller size instruments, a flow-chart, built by the decision tree algorithm, may look like this:
+The simplest way to think about a decision tree algorithm is to consider a flow-chart, especially one that is for diagnostic purposes. Instead of someone building a flow-chart from intuition or experience, we feed data into the computer and the decision tree algorithm would build a flow-chart to explain the data. For example, if we know some characteristics of the music store's past consumers, and want to know who is more likely to buy the soprano size instruments, a flow-chart built by the decision tree algorithm may look like this:
 * Is the customer under 30?
   * Yes: is the customer female?
     * Yes: has the customer played any instrument before?
-      * Yes: the customer has a 90% chance buying a smaller instruments
-      * No: the customer has 15% chance buying a smaller instruments
+      * Yes: the customer has a 90% chance of buying a soprano instrument
+      * No: the customer has 15% chance of buying a soprano instrument
     * No: is the customer married?
-      * Yes: the customer has a 5% chance buying a smaller instruments
-      * No: the customer has 92% chance buying a smaller instruments
+      * Yes: the customer has a 5% chance of buying a soprano instrument
+      * No: the customer has 92% chance of buying a soprano instrument
   * No: is the customer under 50?
-    * Yes: the customer has a 10% chance buying a smaller instruments
+    * Yes: the customer has a 10% chance of buying a soprano instrument
     * No: has the customer played any instrument before?
-      * Yes: the customer has a 100% chance buying a smaller instruments
-      * No: the customer has a 20% chance buying a smaller instruments
+      * Yes: the customer has a 100% chance of buying a soprano instrument
+      * No: the customer has a 20% chance of buying a soprano instrument
 
 You can see several basic elements of a decision tree algorithm from the above example:
 
-1. As expected, the tree algorithm resulted in a hierarchical structure that can be easily represented by a tree diagram;
+1. As expected, the tree algorithm resulted in a hierarchical structure that can easily be represented by a tree diagram;
 2. The tree structure does not need to be symmetrical. For example, when the answer to "is the customer under 50" is a "yes", the branch stopped, resulted in a shorter branch compared to the rest of the tree;
 3. You may use the same feature more than once. In this example, the question "has the customer played any instrument before" has appeared twice. Also there are two splits based on two different age cutoffs;
 4. You can use both categorical and numerical features. In this example, age is numerical, whereas all other features are categorical;
 5. It is accustomed to split to only two branches at each node. If you want three branches, you can do it at the next node: two branches at the first node, then one or both of the next nodes split into another 2 branches.
 
-There are other elements of a decision tree algorithm that you can not observe directly from this example but are very important. We will examine these in more details below.
+There are other elements of a decision tree algorithm that you can not observe directly from this example but are very important. We examine these in more details in the following sections.
 
 ## Split Criterion
 
@@ -63,35 +63,35 @@ At each node, the split must be based on some criterion. The commonly used crite
 
 $$p_{mk}=\frac{1}{n_m}\sum_{y\in Q_m}{I(y=k)}$$
 
-denote the proportion of class $k$ observations in node $m$, where $Q_m$ is the data at node $m$, $n_m$ is the sample size at node $m$, and $I(\cdot)$ returns 1 when $y=k$ and 0 otherwise. Then, the **Gini impurity** is given by:
+denote the proportion of class $k$ observations in node $m$, where $Q_m$ is the data available at node $m$, $n_m$ is the sample size at node $m$, and $I(\cdot)$ returns 1 when $y=k$ and 0 otherwise. Then, the **Gini impurity** is calculated as:
 
 $$H(Q_m)=\sum_{k}{p_{mk}(1-p_{mk})}$$
 
-whereas **Entropy** is given by:
+whereas **Entropy** is:
 
 $$H(Q_m)=-\sum_{k}{p_{mk}\log{(p_{mk})}}$$
 
-At each node $m$, a `candidate` is defined by the combination of feature and threshold. For example, in the above example, for the question "Is the customer under 30," the feature is age and the threshold is 30. Let $\theta$ denote a candidate, which splits $Q_m$ into two partitions: $Q_m^{\text{left}}$ and $Q_m^{\text{right}}$. Then the quality of a split with $\theta$ is computed as the weighted average of the criterion function $H(Q_m)$:
+At each node $m$, a `candidate` is defined by the combination of a feature and a threshold. For example, in the above example, for the question "Is the customer under 30," the feature is age and the threshold is 30. Let $\theta$ denote a candidate, which splits $Q_m$ into two partitions: $Q_m^{\text{left}}$ and $Q_m^{\text{right}}$. Then the **quality** of a split with $\theta$ is computed as the weighted average of the criterion function $H(Q_m)$:
 
 $$G(Q_m, \theta) = \frac{n_m^{\text{left}}}{n_m}H(Q_m^{\text{left}}(\theta)) + \frac{n_m^{\text{right}}}{n_m}H(Q_m^{\text{right}}(\theta))$$
 
 The objective of the decision tree algorithm is to find the candidate that minimizes the quality at each $m$:
 
-$$\theta^{*} = \underset{\theta}{\operatorname{argmin}}{G(Q_m, \theta)}$$
+$$\theta^{*} = \underset{\theta}{\operatorname{argmin}} \ G(Q_m, \theta)$$
 
 It is straightforward to see that, from either the **Gini impurity** or the **Entropy** criterion function, the unconstrained minimum of $G(Q_m, \theta)$ is achieved at $p_{mk}=0$ or $p_{mk}=1$, i.e., when the result of the split consists of a single class.
 
-Before we move on, here is a quick remark: while there exists a global optimum for building a decision tree, where the quality function is minimized for the *whole* tree, the computation of such algorithm is too complex. As a result, practical decision tree algorithms resolve to using *local* optima at each node as described above.
+A quick remark before we move on: although there exists a global optimum for the decision tree algorithm where the quality function is minimized for the *whole* tree, the computation finding it is too complex. In practice, decision tree algorithms use *local* optima at each node as described above.
 
 ## Pruning
 
-If achieving a "pure" branch, where there remains observations from a single class after a split, minimizes the quality function $G(Q_m, \theta)$, then why did we not achieve that "pure" state in the illustrative example with the music store? There are two main reasons. First, we may not have enough features. Imagine you have two individuals in your data set, one bought a small instrument and the other bought a large instrument. These two individuals are almost identical: the only difference is in their eye colors. If "eye color" is not one of the features captured in your data set, you will have no way to distinguish these two individuals. On the other hand, imagine we know *everything* about each and every individual, then it is almost guaranteed that you can find a "perfect" tree, such that there is a single class of individuals at each end node. Such "perfect" tree may not be unique. At the extreme, imagine a tree such that each end node represents a single individual.
+If achieving a "pure" branch, where only observations from a single class remained after a split, minimizes the quality function $G(Q_m, \theta)$, then why did we not achieve that "pure" state in the music store example earlier? There are two main reasons. First, we may not have enough features. Imagine you have two individuals in your data set, one bought a soprano and the other bought a contrabass. These two individuals are almost identical with the only difference being their eye colors. If "eye color" is not one of the features captured in your data set, you will have no way to distinguish these two individuals. On the other hand, imagine we know *everything* about each and every individual, then it is guaranteed that you can find a "perfect" tree, such that there is a single class of individuals at each end node. Such "perfect" tree may not be unique. At the extreme, imagine a tree such that each end node represents a single individual.
 
-The second reason is something we have discussed: the Bias-Variance Tradeoff. Because the ultimate goal is to predict, fitting a "perfect" tree can result in too high of a variance. Continued with the previous example, your ability to build a perfect tree would totally depend on whether you have "eye color" as a feature in your data set. That means that your algorithm is too sensitive to one particular feature - if this feature does not exist, your algorithm would fail to build a "perfect" tree (assuming that was the goal). Or, if this feature is somehow absent or incorrect in the data set you are predicting on, your algorithm would have a breakdown.
+The second reason is related to the Bias-Variance Tradeoff. Because the ultimate goal is to predict, fitting a "perfect" tree can result in too high of a variance. Continued with the previous example, your ability to build a perfect tree depends entirely on whether you have "eye color" as a feature in your data set. That means that your algorithm is too sensitive to one particular feature, and if this feature does not exist, your algorithm would fail to build a "perfect" tree (assuming that was the goal). Or, if this feature is somehow absent or incorrectly coded in the data set you are predicting on, your algorithm may break down.
 
-This is why a decision tree needs to be pruned. This is often done by specifying two hyperparameters in the decision tree algorithm in scikit-learn: the maximum depth of the tree (`max_depth`) and the minimum number of samples required to split (`min_samples_split`). Without going into the technical details, we can intuitively understand that both of these restrictions can prevent us from splitting the tree to the extreme case such that each end node represents an individual. In other words, they restrict the growth of a tree.
+This is why a decision tree needs to be pruned. In practice, pruning is often done by specifying two hyperparameters: the maximum depth of the tree (`max_depth` in scikit-learn) and the minimum number of samples required to split (`min_samples_split` in scikit-learn). Without going into the technical details, we can intuitively understand that both of these restrictions prevent us from splitting the tree to the extreme case such that each end node represents an individual. In other words, they restrict the growth of a tree.
 
-The caveat of a single decision tree algorithm is obvious: it can easily suffer from either high bias or high variance, especially the latter. This is why ensemble methods such as **bagging** and **boosting** were introduced. In practice, a single decision tree is rarely used as the "finale" model. It is often used as a demonstrative example.
+The caveat of a single decision tree algorithm is obvious: it can easily suffer from either high bias or high variance, especially the latter. This is why ensemble methods such as **bagging** and **boosting** were introduced. In practice, a single decision tree is rarely used as the "final" model. It is often only used as a demonstrative example.
 
 ## Bagging and Random Forest
 
@@ -105,33 +105,34 @@ The caveat of a single decision tree algorithm is obvious: it can easily suffer 
 
 In scikit-learn, the first four algorithms are implemented in `BaggingClassifier` whereas `Random Forest` is implemented in `RandomForestClassifier`.
 
-In bagging algorithms, the "aggregation" of results during prediction is usually taken by votes. For example, suppose you have fit your data with the `Random Forest` algorithm with 1,000 trees, and now you want to know whether a new customer is going to buy a small or a large instrument. When the algorithm considers the first split, it will look at all 1,000 trees and see which candidate was used the most. Suppose "Is the customer under 30" appeared in 800 of the trees, then the algorithm would split according to `age=30`. And so, at each split, the algorithm would take a tally from the 1,000 individual trees and act accordingly, just like how one would look at a flow-chart to determine actions.
+In bagging algorithms, the "aggregation" of results during prediction is usually taken by votes. For example, suppose you have fit your data with the `Random Forest` algorithm with 1,000 trees, and now you want to know what size of the instrument a new customer is likely to buy. When the algorithm considers the first split, it will look at all 1,000 trees and see which candidate was used the most often. Suppose "Is the customer under 30" appeared in 800 of the trees, then the algorithm would split according to `age=30`. And so, at each split, the algorithm would take a tally from the 1,000 individual trees and act accordingly, just like how one would look at a flow-chart to determine actions.
 
-While a `Bagging` algorithm helps to reduce bias, the main benefit of bootstrapping is to reduce variance. The `Random Forest` algorithm, for example, is able to reduce variance in two ways: First, bootstrapping random samples is equivalent to consider many different scenarios. Not only does this mean that the algorithm is less reliant on a particular scenario (the whole training data set), it also makes it possible that one or some of the random scenarios may be similar to the "future," i.e., the environment that the algorithm needs to make prediction on. Second, by considering a random set of features at each split, the algorithm is less reliant on certain features, and is hence resilient to "future" cases where certain features may be missing or have errors.
+While a `Bagging` algorithm helps to reduce bias, the main benefit of bootstrapping is to reduce variance. The `Random Forest` algorithm, for example, is able to reduce variance in two ways: First, bootstrapping random samples is equivalent to consider many different scenarios. Not only does this mean that the algorithm is less reliant on a particular scenario (the whole training data set), it also makes it possible that one or some of the random scenarios may be similar to the "future," i.e., the environment that the algorithm needs to make predictions on. Second, by considering a random set of features at each split, the algorithm is less reliant on certain features, and is hence resilient to "future" cases where certain features may be missing or have errors.
 
 ## Boosting and AdaBoost
 
-While the main benefit of `Bagging` is in reducing variance, the main benefit of `Boosting` is to reduce bias, while maintaining a reasonably low variance. Boosting is able to maintain a low variance because, like Bagging, it also fits many trees. Unlike Bagging, which builds the trees in parallel, Boosting builds them sequentially.
+While the main benefit of `Bagging` is in reducing variance, the main benefit of `Boosting` is to reduce bias and maintain a reasonably low variance. Boosting is able to maintain a low variance because, like Bagging, it also fits many trees. Unlike Bagging, which builds the trees in parallel, Boosting builds them sequentially.
 
-The basic idean of boosting is to have incremental (small/"weak") improvements from the previous model, which is why the learning algorithms are built sequentially. This idea can be applied to all types of algorithms. In the context of decision tree, a boosting algorithm can be demonstrated by the following pseudocode:
+The basic idea of boosting is to have incremental (small/"weak") improvements from one stage to another, which is why the learning algorithms are built sequentially. This idea can be applied to all types of algorithms. In the context of decision tree, a boosting algorithm can be demonstrated by the following pseudocode:
 
 ```
 Step 1: Build a simple decision tree (weak learner)
 Step 2: Loop:
-            Minimize weighted error
+            Minimize weighted error with a tree with a small improvement
+            Stop when reaching a stopping rule
 ```
 
 Currently, there are three popular types of tree-based boosting algorithms: `AdaBoost`, `Gradient Boosting`, and `XGBoost`. The different algorithms are different in how they *boost*, i.e., how to implement Step 2.
 
-`AdaBoost` was introduced by Freund and Schapire (1995). It is short for *Ada*ptive *Boost*ing. `AdaBoost` implements boosting by changing the weights of observations. That is, by making some observations/individuals more important than the other. In a training data set with $N$ individuals, the algorithm begins by weighting each individual the same: at a weight of $1/N$. Then it fits a simple decision tree model and makes predictions. Inevitably, it makes better decision for some individuals than the other. The algorithm then increases the weight for individuals that it did not make correct/good predictions on in the first model. Effectively, this asks the next decision tree algorithm to focus more on these individuals that it has failed to understand in the first tree. And this process continues until a stopping rule is reached. A stopping rule may be, for example, "**stops** when 98% of the individuals are correctly predicted".
+`AdaBoost` was introduced by Freund and Schapire (1995). It is short for *Ada*ptive *Boost*ing. `AdaBoost` implements boosting by changing the weights of observations. That is, by making some observations/individuals more important than others. In a training data set with $N$ individuals, the algorithm begins by weighting each individual the same: at a weight of $1/N$. Then it fits a simple decision tree model and makes predictions. Inevitably, it makes better decision for some individuals than others. The algorithm then increases the weight for individuals that it did not make correct/good predictions on in the previous stage/model. This effectively asks the next decision tree algorithm to focus more on these individuals that it has failed to understand previously. And this process continues until a stopping rule is reached. A stopping rule may be, for example, "**stops** when 98% of the individuals are correctly predicted".
 
-It is straightforward to see that a boosting algorithm lowers bias. But was it often able to main a low *variance* too? It was able to do so because a boosting algorithm effectively builds different trees at each iteration. When making predictions, it takes a weighted average of the models. Some mathematical details may be helpful.
+It is straightforward to see that a boosting algorithm lowers bias. But is it often able to main a low *variance* too? Boosting is able to do so because the tree built at each stage/iteration is different. When making predictions, it takes a weighted average of the models. Some mathematical details are helpful.
 
-Let $w_{ij}$ denote the weight of individual $i$ in stage/iteration $j$. In the beginning of the algorithm, we have $w_{i1}=1/N$ for all $i$ where $N$ is the the total number of individuals. After the first weak tree is built, we can calculate the error/misclassification rate of stage $j$ as
+Let $w_{ij}$ denote the weight of individual $i$ in stage/iteration $j$. In the beginning, i.e., $j=1$, we have $w_{i1}=1/N$ for all $i$ where $N$ is the the total number of individuals in the data set. After the first weak tree is built, we can calculate the error/misclassification rate of stage $j$ as
 
 $$e_j = \frac{\sum_{N}{w_{ij}\times I_{ij}(\text{incorrect})}}{\sum_{N}{w_{ij}}}$$
 
-where $I_{ij}(\text{incorrect})$ equals 1 if the prediction for individual $i$ is incorrect in stage $j$ and 0 otherwise. We can then calculate the *stage value* of model $j$:
+where $I_{ij}(\text{incorrect})$ equals 1 if the prediction for individual $i$ is incorrect in stage $j$ and 0 otherwise. We can then calculate the *stage value* of model $j$ with:
 
 $$v_j = \frac{1}{2}\log\left(\frac{1-e_j}{e_j}\right)$$
 
@@ -139,7 +140,7 @@ The stage value is used both in updating $w_{ij+1}$, i.e., the weight of individ
 
 $$w_{ij+1} = w_{ij} \times \exp{(v_j \times I_{ij}(\hat{y}_{ij}=y_i))}$$
 
-where $\hat{y}_{ij}$ is the prediction for individual $i$ in stage $j$, and $y_i$ is the true label for individual $i$. For binary classification, it is conventional to expression $\hat{y}_{ij}$ and $y_i$ as 1 and -1, so that the above equation can be simplified into
+where $\hat{y}_{ij}$ is the prediction for individual $i$ in stage $j$, and $y_i$ is the true label for individual $i$. For binary classification, it is a convention to expression $\hat{y}_{ij}$ and $y_i$ as 1 and -1, such that the above equation can be simplified into
 
 $$w_{ij+1} = w_{ij} \times \exp{(v_j \times \hat{y}_{ij}\times y_i)}$$
 
@@ -153,7 +154,7 @@ where $J$ is the total number of stages.
 
 ## Gradient Boosting and XGBoost
 
-`Gradient Boosting` (Friedman, 2001) is another approach to boost. Instead of updating the weight after each stage/model, Gradient Boosting aims to minimize a loss function, using method such as gradient decent. The default loss function in scikit-learn, which is also the most common in practice, is the binomial deviance:
+`Gradient Boosting` (Friedman, 2001) is another approach to boost. Instead of updating the weight after each stage/model, Gradient Boosting aims to minimize a loss function, using methods such as gradient decent. The default loss function in scikit-learn, which is also the most commonly used in practice, is the binomial deviance:
 
 $$L_j = -2\sum_{N}{y_i\log{(\hat{p}_{ij})} + (1-y_i)\log{(1-\hat{p}_{ij})}}$$
 
@@ -165,9 +166,9 @@ where $F_j(x_i)$ is a numerical predicted value for individual $i$ by regressor 
 
 $$F_j(x) = F_{j-1}(x) + h_j(x)$$
 
-where $h_j(x)$ is the weak learner/regressor at stage $j$ that minimizes $L_j$. Substituting $F_M(x)$, the final regressor, into the above formula for $\hat{p}_{ij}$ gives the overall prediction of the Gradient Boosting model.
+where $h_j(x)$ is the weak learner/regressor at stage $j$ that minimizes $L_j$. Suppose the algorithm runs a total of $M$ stages, we have the final aggregated regressor $F_M(x)$. Substituting $F_M(x)$ into $\hat{p}_{ij}$ gives the overall prediction of the Gradient Boosting model.
 
-Finally, using first-order Taylor approximation, it can be shown that minimizing $L_j$ is approximately equivalent to predicting the negative gradient of the samples, where the negative gradient for individual $i$ is given by
+Using first-order Taylor approximation, it can be shown that minimizing $L_j$ is approximately equivalent to predicting the negative gradient of the samples, where the negative gradient for individual $i$ is given by
 
 $$-g_i = -\left[\frac{\partial l_{ij-1}}{\partial F_{j-1}(x_i)}\right]$$
 
@@ -175,19 +176,19 @@ where $l_{ij-1}$ is the term inside the summation in $L_j$ (but lagged one stage
 
 $$l_{ij-1} = y_i\log{(\hat{p}_{ij-1})} + (1-y_i)\log{(1-\hat{p}_{ij-1})}$$
 
-In other words, while the basic decision tree algorithm aims to predict the true classes, usually represented by 0's and 1's, `Gradient Boosting` aims to predict a numerical value which is the gradient. This means that, at each stage, Gradient Boosting is a regression problem rather than a classification problem. Predicting the gradient allows the algorithm to utilize many well developed methods for such task, for example, the Nelder-Mead method or simple grid search.
+In other words, while the basic decision tree algorithm aims to predict the true classes, usually represented by indicator variables, `Gradient Boosting` aims to predict a continuous numerical value which is the gradient. This means that, at each stage, Gradient Boosting is a regression problem rather than a classification problem. Predicting the gradient allows the algorithm to utilize many well developed methods for such task, for example, the Nelder-Mead method or grid search.
 
 The discussion above focused on binary classification, which requires a single tree to be built in each stage. In multiclass classification, $K$ trees would be built for $K$ classes. For example, if `Gradient Boosting` is used to identify the 26 English alphabets, 26 trees are built and fitted in each stage.
 
-`XGBoost` was introduced by Tianqi Chen in 2014. It is short for "e*X*treme *G*radient *Boost*ing". Instead of gradient decent, `XGBoost` implements [Newton's Method](https://en.wikipedia.org/wiki/Newton%27s_method), which is computationally much more demanding than gradient decent and requires a second-order Taylor approximation (instead of first-order as in `Gradient Boosting`). Due to this, in addition to **Gradients**, `XGBoost` also calculates the **Hessians**, which are a set of second-order derivatives (whereas gradients are the first-order derivatives).
+`XGBoost` was introduced by Tianqi Chen in 2014. It is short for "e*X*treme *G*radient *Boost*ing". Instead of gradient decent, `XGBoost` implements the [Newton's Method](https://en.wikipedia.org/wiki/Newton%27s_method), which is computationally much more demanding than gradient decent and requires a second-order Taylor approximation (instead of only the first-order approximation as in `Gradient Boosting`). Due to this, in addition to **Gradients**, `XGBoost` also calculates the **Hessians**, which are a set of second-order derivatives (whereas gradients are the first-order derivatives).
 
-`Python` library `xgboost` implements `XGBoost` and can easily be integrated with `scikit-learn`, which is the library we use to implement all algorithms covered in this chapter.
+The `Python` library `xgboost` implements `XGBoost` and can easily be integrated with `scikit-learn`, which is the library we use to implement all algorithms covered in this chapter.
 
 ## Python Implementation with scikit-learn
 
-As we have done in other chapters, we will first generate a data set, then fit the data with various algorithms. After we have fitted the models, we will print out some basic performance metrics, chief among which is the `confusion matrix` and conduct a cross validation exercise.
+As we have done in other chapters, we will first generate a data set, then fit the data with various algorithms. After we have fitted the models, we will print out some basic performance metrics, chief among them the `confusion matrix`, and conduct a cross validation exercise.
 
-The algorithms we will consider include:
+The algorithms we consider include:
 * Logistic regression
 * Decision tree classifier
 * Random forest classifier
@@ -195,7 +196,7 @@ The algorithms we will consider include:
 * Gradient boosting classifier
 * XGBoost
 
-Even though logistic regression is not covered in this chapter, I included it in the Python implementation for comparison purposes. Although not necessary, I use a Python class in this implementation. Here is the full script:
+Even though logistic regression is not covered in this chapter, I included it in the Python implementation for comparison purposes. Although not necessary, I also use a Python class in this implementation. Here is the full script:
 
 ```python
 import random
@@ -385,7 +386,7 @@ Here are some remarks about the script. First, the number of numerical features 
 
 In the `if` statement that followed, the `Kmeans` algorithm is called to generate `n_group` classes/clusters.
 
-Additional randomness is added to the numerical features by:
+Additional randomness is added to the numerical features by the following:
 
 ```python
         # Add some random noise to the numerical features
@@ -394,31 +395,31 @@ Additional randomness is added to the numerical features by:
             self.df[column] = self.df[column] + random.gauss(mu=0, sigma=3)
 ```
 
-The rest of the `TreeModels` class performs the train-test split and adds a method named `show_results()` to run the selected algorithm then print out (based on the value of `print_flag`) several performance metrics.
+The rest of the `TreeModels` class performs the train-test split and adds a method named `show_results()` to run the selected algorithm followed by printing out (based on the value of `print_flag`) several performance metrics.
 
 ## Confusion Matrix and other Performance Metrics
 
-`Confusion matrix` is the most important and common way to examine the performance of a classification algorithm. It is a matrix showing the numbers of individuals in each true-predicted label combination. In our simulated data, there are 5 classes, which results in a 5-by-5 confusion matrix. Below is the confusion matrix of the test data from the logistic regression. The simulation has included categorical features in generating the target groups:
+`Confusion matrix` is the most important and common way to examine the performance of a classification algorithm. It is a matrix showing the numbers of individuals in each true-predicted label combination. In our simulated data, there are 5 classes, which results in a 5-by-5 confusion matrix. Below is the confusion matrix of the test data from the logistic regression when the simulation has included categorical features in generating the target groups:
 
 ![Comparison](cm_logit_False.png)
 
 In the confusion matrix, the rows show the "True label" whereas the columns show the "Predicted label". All the cells on the diagonal are corrected predicted. Based on the confusion matrix, there are three basic performance metrics: **accuracy**, **precision**, and **recall**. There are also various metrics that are weighted averages. For example, the **f1 score** is the harmonic mean of precision and recall.
 
-Accuracy is the proportion of individuals that the algorithm has predicted correctly. To calculate the accuracy score, we sum up the values on the diagonal then decide the total:
+`Accuracy` is the proportion of individuals that the algorithm has predicted correctly. To calculate the accuracy score, we sum up the values on the diagonal then divide the total number of individuals in the data set. From the above example, we can calculate accuracy by:
 
 $$\frac{1884+2769+2945+1553+404}{15000}=0.6370$$
 
-Precision and recall are usually defined based on a certain class. For overall precision and recall scores, we can then take a weighted average. Precision is the proportion of individuals who the algorithm predicted to be a certain class is actually that class. In the above example, 2577 individuals were predicted to be class 0, but only 1884 actually are. As a result, the precision *for class 0* is:
+Precision and recall are usually defined based on a certain class. For overall precision and recall scores, we can take a weighted average. `Precision` is the proportion of individuals who the algorithm predicted to be a certain class is actually that class. In the above example, 2577 individuals were predicted to be class 0, but only 1884 actually are. As a result, the precision *for class 0* is:
 
 $$\frac{1884}{2577}=0.7311$$
 
-On the other hand, recall is the proportion of individuals who belong to a certain class that the algorithm predicted correctly. IN the above example, 4979 individuals belong to class 2, but only 2945 were predicted correctly by the algorithm. As a result, the recall *for class 2* is:
+`Recall`, On the other hand, is the proportion of individuals who belong to a certain class that the algorithm predicted correctly. In the above example, 4979 individuals belong to class 2, but only 2945 were predicted correctly by the algorithm. As a result, the recall *for class 2* is:
 
 $$\frac{2945}{4979}=0.5915$$
 
-If we take weighted average of precision and recall of all 5 classes, we get the overall precision and recall scores as 0.6376 and 0.6370, or about 63.7%.
+If we take weighted average of precision and recall of all 5 classes, we get the overall precision and recall scores as 0.6376 and 0.6370, or about 63.7%. These are the values reported as `precision_score` and `recall_score` by scikit-learn.
 
-Economics and social sciences often use the terms "Type I" and "Type II" errors, which can be related to the discussion here in a binary classification. In a binary classification, we have 4 quadrants:
+Economics and social sciences often use the terms "Type I" and "Type II" errors, which can be related to the discussion here in case of binary classification. In a binary classification, we have 4 quadrants:
 1. True positive (TP): those who belong to the "positive" class and are predicted so;
 2. True negative (TN): those who belong to the "negative" class and are predicted so. True positive and true negative are on the diagonal;
 3. False positive (FP): those who are predicted to be "positive" but are actually "negative';
@@ -426,7 +427,7 @@ Economics and social sciences often use the terms "Type I" and "Type II" errors,
 
 Type I error corresponds to false positive and Type II error corresponds to false negative.
 
-Before we move on to formally compare results from the 6 algorithms, it is worth noting that random forest, gradient boosting, and XGBoost performed much better than logistic regression in the above simulated data set (with `random seed = 123`). For example, below is the confusion matrix from XGBoost:
+Before we move on to formally compare results from the 6 algorithms, it is worth noting that random forest, gradient boosting, and XGBoost performed much better than logistic regression in the above simulated data set with categorical features and `random seed = 123`. For example, below is the confusion matrix from XGBoost:
 
 ![Comparison](cm_xgboost_False.png)
 
