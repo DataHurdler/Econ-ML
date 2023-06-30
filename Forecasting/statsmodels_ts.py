@@ -253,5 +253,5 @@ if __name__ == "__main__":
             best_options = x
 
     trend_type, seasonal_type = best_options
-    print(trend_type)
-    print(seasonal_type)
+    print(f"best trend type: {trend_type}")
+    print(f"best seasonal type: {seasonal_type}")
