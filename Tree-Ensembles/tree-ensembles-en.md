@@ -384,7 +384,7 @@ Here are some remarks about the script. First, the number of numerical features 
 * Only the original numerical feature columns are stored (`self.num_features[:, :-2]`);
 * The categorical features are one-hot encoded with `pd.get_dummies()`.
 
-In the `if` statement that followed, the `Kmeans` algorithm is called to generate `n_group` classes/clusters.
+In the `if` statement that followed, the `KMeans` algorithm is called to generate `n_group` classes/clusters.
 
 Additional randomness is added to the numerical features by the following:
 
@@ -487,11 +487,11 @@ def plot_monte_carlo(data: list):
               fancybox=True, framealpha=0.5)
 ```
 
-The script intends to use parallel computing, but algorithms in `scikit-learn` already utilized parallel computing, we set `Pool(1)` at the end to run it with single thread. Two comparisons, with and without using the categorical features in generating the target groups, are run. The average score from 10-fold cross validations are recorded and plotted. Here is the result from when `kmeans` generated the target groups without using the categorical columns (but they are still in the training data):
+The script intends to use parallel computing, but algorithms in `scikit-learn` already utilized parallel computing, so `Pool(1)` is set to run with a single thread. Two comparisons, with and without using the categorical features in generating the target groups, were run. The average score from 10-fold cross validations are recorded and plotted. Here is the result from when `KMeans` generated the target groups without using the categorical columns (but they are still present in the training data and used as features):
 
 ![Comparison](comparison_true.png)
 
-A single decision tree performed the worst, while, surprisingly, logistic regression performed the best. Keep in mind that the ups and downs at different sample sizes do not indicate that more data is worse. There is some random components in how the data was generated, namely with `kmeans` algorithm.
+A single decision tree performed the worst, while, surprisingly, logistic regression performed the best. Keep in mind that the ups and downs at different sample sizes do not indicate that more data is worse. There is some random components in how the data was generated with the `KMeans` algorithm.
 
 When categorical columns are included in generating the target groups, there exists more variations among algorithms:
 
@@ -501,15 +501,15 @@ In here, `Adaboost` performed noticeably worse than all other algorithms. Logist
 
 ## Summary
 
-In this chapter, we have covered the decision tree algorithm as well as bagging and boosting algorithms based on decision tree. There are few important takeaways and remarks.
+In this chapter, we have covered the decision tree algorithm as well as bagging and boosting algorithms based on decision tree. Here are a few important takeaways and remarks.
 
-First, ensemble methods is a general method that applies to algorithms beyond tree-based models. You could easily applied the same principle of bagging and boosting on regression models. For example, you can build several regressors with a bootstrap data set, or include only some of the features, or use weighted methods to boost. As a matter of fact, ensemble can also be built between regression and classification algorithms. Gradient Boosting and XGBoost can actually be considered as such ensemble: while the end-goal of the algorithms were to predict classes, at their core, they are regressions.
+First, ensemble methods is a general method that applies to algorithms beyond tree-based models. You could apply the same principle of bagging and boosting on regression models. For example, you can build several regressors with a bootstrap data set, or include only some of the features, or use weighted methods to boost. As a matter of fact, ensemble can also be built between regression and classification algorithms. Gradient Boosting and XGBoost are already such ensembles: regression models were used in in each stage for an eventual prediction of classes.
 
-Second, tree-based models can be used for regression problems. For example, instead of `RandomForestClassifier`, you can use `RandomForestRegressor` for a regression problem. When you are using a classification algorithm on a continuous target. Instead of trying to predict classes, the `RandomForestRegressor`, as well as other classification used for regression problems, aims to predict the mean of the target. We will cover this in more depth in a later chapter.
+Second, tree-based models can be used for regression problems. For example, instead of `RandomForestClassifier`, you can use `RandomForestRegressor` from scikit-learn to implement a Random Forest algorithm regression problems. When you are using a classification algorithm on a continuous target, the algorithm aims to predict the mean of the target instead of trying to predict classes. We will cover this in more depth in a later chapter.
 
-Third, in general, it is more accurate to predict classes than continuous values. Due to this, the use of classification algorithms may be broader than most expected. For example, it is possible to convert a regression problem (in predicting continuous quantities) to classification problems. The market share example given in the beginning of the chapter is a good example. Another example is e-commerce. Most e-commerce owners have a limited offering. As a result, instead of predicting the sales per month or the dollar value of a customer, it is easier to predict whether and how many a customer would buy. This method can be especially powerful since a business owner often has control over the price of the products.
+Third, in general, it is more accurate to predict classes than continuous values. Due to this, the use of classification algorithms may be broader than most would think. For example, it is possible to convert a regression problem (in predicting continuous quantities) to classification problems. The market share example given in the beginning of the chapter is a good example. Another example is e-commerce. Most e-commerce owners have a limited offering. As a result, instead of predicting the total sales per month or the dollar value of a customer, it is easier to predict whether and how many units a customer would buy. This method can be especially powerful since a business owner often has control over the price of the products.
 
-Lastly, tree-based methods can be used for causal inference. While causal inference itself is a topic of a later chapter, for readers who are familiar with causal inference methods, you can easily find parallel between decision tree and propensity score matching (PSM): individuals who ended up in the same leave have something in common, and hence can provide good matching samples. This is the basic idea behind `causal tree` (Athey and Imbens, 2016).
+Lastly, tree-based methods can be used for causal inference. While causal inference itself is a topic of a later chapter, for readers who are familiar with causal inference methods, you can easily find parallel between decision tree and propensity score matching (PSM): individuals who ended up in the same leave/node have something in common, and hence can be considered as good matches. This is the basic idea behind `causal tree` (Athey and Imbens, 2016).
 
 ## References
 
