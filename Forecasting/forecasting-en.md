@@ -296,12 +296,12 @@ As in other chapters, a `class`, named `StocksForecast`, is written. In the begi
             self.dfs[name]['Log'] = np.log(self.dfs[name]['Close'])
 ```
 
-Each algorithm is implemented inside a wrapper function. For example, the ETS implementation is inside `run_ets`, which has only 4 lines:
+Each algorithm is implemented inside a wrapper function. For example, the ETS implementation is inside `run_ets()`, which has only 4 lines:
 
-1. call the `prepare_data` function
+1. call the `prepare_data()` function
 2. instantiate the `ExponentialSmoothing` model from `statsmodels` with hyperparameters `trend`, `seasonal`, and `seasonal_periods`. For `trend` and `seasonal`, `mul` means these trends are multiplicative. The value 252 (days) is used for `seasonal_periods` since this is about the number of trading days in half a year
 3. call `model.fit()`
-4. call the `plot_fitted_forecast` model
+4. call the `plot_fitted_forecast()` model
 
 ```python
     def run_ets(self, stock_name='UAL', col='Close'):
@@ -320,7 +320,7 @@ Each algorithm is implemented inside a wrapper function. For example, the ETS im
         plot_fitted_forecast(self.dfs[stock_name], train_idx, test_idx, result, col)
 ```
 
-A walk-forward validation for ETS is implemented in by the method `walkforward` (Lazy Programmer). For time series data, we can not perform cross-validation by selecting a random subset of observations, as this can result in using future values to predict past value. Instead, a n-step walk-forward validation should be used. Suppose we have data from 1/1/2018 to 12/31/2022, a 1-step walk-forward validation using data from December 2022 would involve the following steps:
+A walk-forward validation for ETS is implemented in by the method `walkforward()` (from Lazy Programmer). For time series data, we can not perform cross-validation by selecting a random subset of observations, as this can result in using future values to predict past value. Instead, a n-step walk-forward validation should be used. Suppose we have data from 1/1/2018 to 12/31/2022, a 1-step walk-forward validation using data from December 2022 would involve the following steps:
 
 1. train the model with data from 1/1/2018 to 11/30/2022
 2. with model result, make prediction for 12/1/2022
@@ -373,9 +373,16 @@ The following method inside the `StocksForecast` class implements the walk-forwa
         return np.mean(errors)
 ```
 
-We should try several different hyperparameter combinations since the purpose of the walk-forward validation is to choose the "best" hyperparameters. The following lines inside `if __name__ == "__main__":` calls the `walkforward` method to try a combination of hyperparameters and prints out the "best" values for `trend` and `seasonal`:
+We should try several different hyperparameter combinations since the purpose of the walk-forward validation is to choose the "best" hyperparameters. The following lines inside `if __name__ == "__main__":` calls the `walkforward()` method to try a combination of hyperparameters and prints out the "best" values for `trend` and `seasonal`:
 
 ```python
+    H = 20  # 4 weeks
+    STEPS = 10
+
+    # Hyperparameters to try
+    trend_type_list = ['add', 'mul']
+    seasonal_type_list = ['add', 'mul']
+    
     tuple_of_option_lists = (trend_type_list, seasonal_type_list,)
     best_score = float('inf')
     best_options = None
@@ -393,6 +400,84 @@ We should try several different hyperparameter combinations since the purpose of
     print(f"best seasonal type: {seasonal_type}")
 ```
 
+The method `run_var()` runs the VAR model. Since we run VAR with several stocks, standardized/normalized should be performed. This is accomplished with the `StandardScaler()` method from scikit-learn after we have called the `prepare_data()` function to split the data into train and test sets. In the `run_var()` method, we also call the methods `plot_acf()` and `plot_pacf()` from sci-kit learn to examine the autocorrelation and partial autocorrelation functions. They are also important for the ARIMA model, but since we will be running Auto ARIMA, we are spared of the task of manually determine the values of AR() and MA().
+
+```python
+    def run_var(self, stock_list=('UAL', 'WMT', 'PFE'), col='Close'):
+        """
+        Run the Vector Autoregression (VAR) model on the specified stocks.
+
+        Args:
+            stock_list (tuple): Tuple of stock names. Default is ('UAL', 'WMT', 'PFE').
+            col (str): The column name to use for the model. Default is 'Close'.
+        """
+        df_all = pd.DataFrame(index=self.dfs[stock_list[0]].index)
+        for stock in stock_list:
+            df_all = df_all.join(self.dfs[stock][col].dropna())
+            df_all.rename(columns={col: f"{stock}_{col}"}, inplace=True)
+
+        train, test, train_idx, test_idx = prepare_data(df_all)
+
+        stock_cols = df_all.columns.values
+
+        for value in stock_cols:
+            scaler = StandardScaler()
+            train[f'Scaled_{value}'] = scaler.fit_transform(train[[value]])
+            test[f'Scaled_{value}'] = scaler.transform(test[[value]])
+            df_all.loc[train_idx, f'Scaled_{value}'] = train[f'Scaled_{value}']
+            df_all.loc[test_idx, f'Scaled_{value}'] = test[f'Scaled_{value}']
+
+        cols = ['Scaled_' + value for value in stock_cols]
+
+        plot_acf(train[cols[0]])
+        plot_pacf(train[cols[0]])
+        plot_pacf(train[cols[-1]])
+
+        model = VAR(train[cols])
+        result = model.fit(maxlags=40, method='mle', ic='aic')
+        lag_order = result.k_ar
+
+        prior = train.iloc[-lag_order:][cols].to_numpy()
+        forecast_df = pd.DataFrame(result.forecast(prior, N_TEST), columns=cols)
+
+        plot_fitted_forecast(df_all, train_idx, test_idx, result, stock_cols[0], forecast_df)
+
+        df_all.loc[train_idx, 'fitted'] = result.fittedvalues[cols[0]]
+        df_all.loc[test_idx, 'forecast'] = forecast_df[cols[0]].values
+
+        train_pred = df_all.loc[train_idx, 'fitted'].iloc[lag_order:]
+        train_true = df_all.loc[train_idx, cols[0]].iloc[lag_order:]
+
+        print("VAR Train R2: ", r2_score(train_true, train_pred))
+
+        test_pred = df_all.loc[test_idx, 'forecast']
+        test_true = df_all.loc[test_idx, cols[0]]
+        print("VAR Test R2:", r2_score(test_true, test_pred))
+```
+
+Last but not leas, the `run_arima()` method runs the Auto ARIMA from the `pdmarima` library. Similar to `run_ets()`, there are only four lines of code:
+
+```python
+    def run_arima(self, stock_name='UAL', col='Close', seasonal=True, m=12):
+        """
+        Run the Auto Autoregressive Integrated Moving Average (ARIMA) model on the specified stock.
+
+        Args:
+            stock_name (str): The name of the stock. Default is 'UAL'.
+            col (str): The column name to use for the model. Default is 'Close'.
+            seasonal (bool): Whether to include seasonal components. Default is True.
+            m (int): The number of periods in each seasonal cycle. Default is 12.
+        """
+        train, test, train_idx, test_idx = prepare_data(self.dfs[stock_name])
+
+        model = pm.auto_arima(train[col], trace=True, suppress_warnings=True, seasonal=seasonal, m=m)
+
+        print(model.summary())
+
+        plot_fitted_forecast(self.dfs[stock_name], train_idx, test_idx, model, col, arima=True)
+```
+
+If you would like to run ARIMA from `statsmodels`, you can import `ARIMA` from `statsmodels.tsa.arima.model`. `statsmodels` also provides functions and API for many other time-series/forecasting methods.
 
 ## Machine Learning Methods (Brief)
 
