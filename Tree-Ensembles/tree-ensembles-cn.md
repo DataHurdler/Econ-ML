@@ -147,35 +147,37 @@ $$\hat{y}_{i} = \sum_{J}{\hat{y}_{ij} \times v_j}$$
 
 其中 $J$ 算法所用阶段的总数。
 
-## Gradient Boosting and XGBoost
+## 梯度提升法
 
-`Gradient Boosting` (Friedman, 2001) is another approach to boost. Instead of updating the weight after each stage/model, Gradient Boosting aims to minimize a loss function, using method such as gradient decent. The default loss function in scikit-learn, which is also the most common in practice, is the binomial deviance:
+另外一个流行的提升方法梯度提升（`Gradient Boosting`）这个方法是Friedman在2001提出来的。梯度提升与AdaBoost不一样的地方在于它的目标是通过梯度下降（gradient decent）来最小化一个损失函数（loss function）。在scikit-learn当中，梯度提升法的默认损失函数是二项损失函数（binomial deviance）：
 
 $$L_j = -2\sum_{N}{y_i\log{(\hat{p}_{ij})} + (1-y_i)\log{(1-\hat{p}_{ij})}}$$
 
-where $N$ is the number of individuals, $y_i$ is the true label for individual $i$, and $\hat{p}_{ij}$ is the predicted probability that individual $i$ at stage $j$ having a label of $y$, and is given by the softmax (logistic) function when log-loss is specified:
+其中 $N$ 是个体总数，$y_i$ 是个体 $i$ 的分类真实值，$\hat{p}_{ij}$ 是个体 $i$ 在第 $j$ 阶段取值为其真实值的概率。这个概率通过softmax函数来决定：
 
 $$\hat{p}_{ij} = \frac{\exp{(F_j(x_i))}}{1+\exp{(F_j(x_i))}}$$
 
-where $F_j(x_i)$ is a numerical predicted value for individual $i$ by regressor $F_j(x)$. Here, $F_j(x)$ is the aggregated regressor in stage $j$, which is given by
+上式中的 $F_j(x)$ 函数是阶段 $j$ 的加总函数：
 
 $$F_j(x) = F_{j-1}(x) + h_j(x)$$
 
-where $h_j(x)$ is the weak learner/regressor at stage $j$ that minimizes $L_j$. Substituting $F_M(x)$, the final regressor, into the above formula for $\hat{p}_{ij}$ gives the overall prediction of the Gradient Boosting model.
+其中 $h_j(x)$ 是在阶段 $j$ 用于最小化 $L_j$ 的弱学习器（weak learner）。当所有阶段 $j$ 都被加总后，我们会得到 $F_M(x)$。把 $F_M(x)$ 代入 $\hat{p}_{ij}$ 之后，我们就得到了梯度提升的最终模型了。
 
-Finally, using first-order Taylor approximation, it can be shown that minimizing $L_j$ is approximately equivalent to predicting the negative gradient of the samples, where the negative gradient for individual $i$ is given by
+通过一阶泰勒展开式（first-order Taylor approximation），我们可以把最小化 $L_j$ 转化为预测样本的负梯度值（negative gradient）。其中，个体 $i$ 的负梯度值是
 
 $$-g_i = -\left[\frac{\partial l_{ij-1}}{\partial F_{j-1}(x_i)}\right]$$
 
-where $l_{ij-1}$ is the term inside the summation in $L_j$ (but lagged one stage):
+上式中的 $l_{ij-1}$ 在 $L_j$ 也出现过（只是滞后一期）:
 
 $$l_{ij-1} = y_i\log{(\hat{p}_{ij-1})} + (1-y_i)\log{(1-\hat{p}_{ij-1})}$$
 
-In other words, while the basic decision tree algorithm aims to predict the true classes, usually represented by 0's and 1's, `Gradient Boosting` aims to predict a numerical value which is the gradient. This means that, at each stage, Gradient Boosting is a regression problem rather than a classification problem. Predicting the gradient allows the algorithm to utilize many well developed methods for such task, for example, the Nelder-Mead method or simple grid search.
+换句话说，虽然决策树算法的目标是预测分类（通常用虚拟变量来表示），梯度提升法的目标是预测一个数值。这也就是说，梯度算法把一个分类问题转换成了回归问题，从而使得我们可以用回归办法来解决分类问题。
 
-The discussion above focused on binary classification, which requires a single tree to be built in each stage. In multiclass classification, $K$ trees would be built for $K$ classes. For example, if `Gradient Boosting` is used to identify the 26 English alphabets, 26 trees are built and fitted in each stage.
+在前面的讨论里，我们假设的是二元分类。二元分类只需要一个模型。如果是多元分类，那么模型数与分类数要一致。譬如，如果我们用梯度提升法来对26个英文字母进行分类，那么我们在每个阶段就需要26个决策树模型。
 
-`XGBoost` was introduced by Tianqi Chen in 2014. It is short for "e*X*treme *G*radient *Boost*ing". Instead of gradient decent, `XGBoost` implements [Newton's Method](https://en.wikipedia.org/wiki/Newton%27s_method), which is computationally much more demanding than gradient decent and requires a second-order Taylor approximation (instead of first-order as in `Gradient Boosting`). Due to this, in addition to **Gradients**, `XGBoost` also calculates the **Hessians**, which are a set of second-order derivatives (whereas gradients are the first-order derivatives).
+`XGBoost` 模型由Tianqi Chen在2014年提出。它是"e*X*treme *G*radient *Boost*ing"的缩写。XGBoost与前面简单的梯度提升法不一样的地方是它使用牛顿迭代法来进行优化。这就需要用到泰勒二阶展开。所以XGBoost不仅仅要计算Gradients，它还要计算Hessians（二阶偏导数）。
+
+我们可以通过Python中的XGBoost库来实现XGBoost。这个库跟scikit-learn可以进行很好的整合。下面我们就来看看如何在scikit-learn中实现前面讲过的所有模型。
 
 `Python` library `xgboost` implements `XGBoost` and can easily be integrated with `scikit-learn`, which is the library we use to implement all algorithms covered in this chapter.
 
