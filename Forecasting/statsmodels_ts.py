@@ -153,14 +153,25 @@ class StocksForecast:
 
         return np.mean(errors)
 
-    def run_var(self, stock_list=('UAL', 'WMT', 'PFE'), col='Close'):
-        """
-        Run the Vector Autoregression (VAR) model on the specified stocks.
+    def walkforward_ets(self, h, steps, stock_name, col, options):
 
-        Args:
-            stock_list (tuple): Tuple of stock names. Default is ('UAL', 'WMT', 'PFE').
-            col (str): The column name to use for the model. Default is 'Close'.
-        """
+        best_score = float('inf')
+        best_options = None
+
+        for x in itertools.product(*options):
+            score = self.walkforward(h=h, steps=steps, stock_name=stock_name, col=col, tuple_of_option_lists=x)
+
+            if score < best_score:
+                print("Best score so far:", score)
+                best_score = score
+                best_options = x
+
+        trend_type, seasonal_type = best_options
+        print(f"best trend type: {trend_type}")
+        print(f"best seasonal type: {seasonal_type}")
+
+    def prepare_data_var(self, stock_list, col):
+
         df_all = pd.DataFrame(index=self.dfs[stock_list[0]].index)
         for stock in stock_list:
             df_all = df_all.join(self.dfs[stock][col].dropna())
@@ -170,6 +181,7 @@ class StocksForecast:
 
         stock_cols = df_all.columns.values
 
+        # standardizing different stocks
         for value in stock_cols:
             scaler = StandardScaler()
             train[f'Scaled_{value}'] = scaler.fit_transform(train[[value]])
@@ -179,30 +191,43 @@ class StocksForecast:
 
         cols = ['Scaled_' + value for value in stock_cols]
 
-        plot_acf(train[cols[0]])
-        plot_pacf(train[cols[0]])
-        plot_pacf(train[cols[-1]])
+        return df_all, train, test, train_idx, test_idx, stock_cols, cols
+
+    def run_var(self, stock_list=('UAL', 'WMT', 'PFE'), col='Close'):
+        """
+        Run the Vector Autoregression (VAR) model on the specified stocks.
+
+        Args:
+            stock_list (tuple): Tuple of stock names. Default is ('UAL', 'WMT', 'PFE').
+            col (str): The column name to use for the model. Default is 'Close'.
+        """
+
+        df_all, train, test, train_idx, test_idx, stock_cols, cols = self.prepare_data_var(stock_list, col)
+
+        # plot_acf(train[cols[0]])
+        # plot_pacf(train[cols[0]])
+        # plot_pacf(train[cols[-1]])
 
         model = VAR(train[cols])
         result = model.fit(maxlags=40, method='mle', ic='aic')
-        lag_order = result.k_ar
 
+        lag_order = result.k_ar
         prior = train.iloc[-lag_order:][cols].to_numpy()
         forecast_df = pd.DataFrame(result.forecast(prior, N_TEST), columns=cols)
 
         plot_fitted_forecast(df_all, train_idx, test_idx, result, stock_cols[0], forecast_df)
 
-        df_all.loc[train_idx, 'fitted'] = result.fittedvalues[cols[0]]
-        df_all.loc[test_idx, 'forecast'] = forecast_df[cols[0]].values
-
-        train_pred = df_all.loc[train_idx, 'fitted'].iloc[lag_order:]
-        train_true = df_all.loc[train_idx, cols[0]].iloc[lag_order:]
-
-        print("VAR Train R2: ", r2_score(train_true, train_pred))
-
-        test_pred = df_all.loc[test_idx, 'forecast']
-        test_true = df_all.loc[test_idx, cols[0]]
-        print("VAR Test R2:", r2_score(test_true, test_pred))
+        # df_all.loc[train_idx, 'fitted'] = result.fittedvalues[cols[0]]
+        # df_all.loc[test_idx, 'forecast'] = forecast_df[cols[0]].values
+        #
+        # train_pred = df_all.loc[train_idx, 'fitted'].iloc[lag_order:]
+        # train_true = df_all.loc[train_idx, cols[0]].iloc[lag_order:]
+        #
+        # print("VAR Train R2: ", r2_score(train_true, train_pred))
+        #
+        # test_pred = df_all.loc[test_idx, 'forecast']
+        # test_true = df_all.loc[test_idx, cols[0]]
+        # print("VAR Test R2:", r2_score(test_true, test_pred))
 
     def run_arima(self, stock_name='UAL', col='Close', seasonal=True, m=12):
         """
@@ -224,11 +249,13 @@ class StocksForecast:
 
 
 if __name__ == "__main__":
+    STOCK = 'UAL'
+    COL = 'Log'
     N_TEST = 10
     H = 20  # 4 weeks
     STEPS = 10
 
-    # Hyperparameters to try
+    # Hyperparameters to try in ETS walk-forward validation
     trend_type_list = ['add', 'mul']
     seasonal_type_list = ['add', 'mul']
     init_method_list = ['estimated', 'heuristic', 'legacy-heristic']
@@ -236,22 +263,10 @@ if __name__ == "__main__":
 
     ts = StocksForecast()
 
-    ts.run_ets(stock_name='UAL', col='Log')
-    ts.run_var(col='Log')
-    ts.run_arima(stock_name='UAL', col='Log')
+    ts.run_ets(stock_name=STOCK, col=COL)
+    ts.run_var(col=COL)
+    ts.run_arima(stock_name=STOCK, col=COL)
 
     tuple_of_option_lists = (trend_type_list, seasonal_type_list,)
-    best_score = float('inf')
-    best_options = None
 
-    for x in itertools.product(*tuple_of_option_lists):
-        score = ts.walkforward(h=H, steps=STEPS, stock_name='UAL', col='Log', tuple_of_option_lists=x)
-
-        if score < best_score:
-            print("Best score so far:", score)
-            best_score = score
-            best_options = x
-
-    trend_type, seasonal_type = best_options
-    print(f"best trend type: {trend_type}")
-    print(f"best seasonal type: {seasonal_type}")
+    ts.walkforward_ets(H, STEPS, STOCK, COL, tuple_of_option_lists)
