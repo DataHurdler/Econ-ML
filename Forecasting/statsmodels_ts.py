@@ -15,13 +15,6 @@ from sklearn.preprocessing import StandardScaler
 import warnings
 warnings.filterwarnings("ignore")  # ignore warnings
 
-# TODO:BUILD THE WALK-FORWARD VALIDATION SO IT WORKS FOR ALL METHODS
-# Other things that may be of interest:
-# boxcox: from scipy.stats import boxcox
-# Test for stationarity: from statsmodels.tsa.stattools import adfuller
-# VARMAX: from statsmodels.tsa.statespace.varmax import VARMAX
-# ARIMA: from statsmodels.tsa.arima.model import ARIMA
-
 
 def prepare_data(df):
     """
@@ -41,30 +34,14 @@ def prepare_data(df):
     return train, test, train_idx, test_idx
 
 
-def plot_fitted_forecast(df, train_idx, test_idx, model_result, col=None, forecast_df=None, arima=False):
+def plot_fitted_forecast(df, col=None):
     """
     Plot the fitted and forecasted values of a time series.
 
     Args:
         df (pandas.DataFrame): The input dataframe.
-        train_idx (numpy.ndarray): Boolean array indicating the train index.
-        test_idx (numpy.ndarray): Boolean array indicating the test index.
-        model_result: The fitted model or forecast model result.
         col (str): The column name to plot. Default is None.
-        forecast_df (pandas.DataFrame): The forecasted dataframe. Default is None.
-        arima (bool): Whether the model is ARIMA or not. Default is False.
     """
-    if arima:
-        df.loc[train_idx, 'fitted'] = model_result.predict_in_sample(end=-1)
-        df.loc[test_idx, 'forecast'] = np.array(model_result.predict(n_periods=N_TEST, return_conf_int=False))
-    elif forecast_df is None:
-        df.loc[train_idx, 'fitted'] = model_result.fittedvalues
-        df.loc[test_idx, 'forecast'] = np.array(model_result.forecast(N_TEST))
-    else:
-        col = "Scaled_" + col
-        df.loc[train_idx, 'fitted'] = model_result.fittedvalues[col]
-        df.loc[test_idx, 'forecast'] = forecast_df[col].values
-
     df = df[-108:]  # only plot the last 108 days
 
     fig, ax = plt.subplots(figsize=(15, 5))
@@ -100,14 +77,18 @@ class StocksForecast:
             stock_name (str): The name of the stock. Default is 'UAL'.
             col (str): The column name to use for the model. Default is 'Close'.
         """
-        train, test, train_idx, test_idx = prepare_data(self.dfs[stock_name])
+        df_all = self.dfs[stock_name]
+        train, test, train_idx, test_idx = prepare_data(df_all)
 
         model = ExponentialSmoothing(train[col].dropna(), trend='mul', seasonal='mul', seasonal_periods=252)
         result = model.fit()
 
-        plot_fitted_forecast(self.dfs[stock_name], train_idx, test_idx, result, col)
+        df_all.loc[train_idx, 'fitted'] = result.fittedvalues
+        df_all.loc[test_idx, 'forecast'] = np.array(result.forecast(N_TEST))
 
-    def walkforward(self, h, steps, tuple_of_option_lists, stock_name='UAL', col='Close', debug=False):
+        plot_fitted_forecast(df_all, col)
+
+    def walkforward_ets(self, h, steps, tuple_of_option_lists, stock_name='UAL', col='Close', debug=False):
         """
         Perform walk-forward validation on the specified stock. Only supports ExponentialSmoothing
 
@@ -153,13 +134,25 @@ class StocksForecast:
 
         return np.mean(errors)
 
-    def walkforward_ets(self, h, steps, stock_name, col, options):
+    def run_walkforward(self, h, steps, stock_name, col, options):
+        """
+            Perform walk-forward validation on the specified stock using Exponential Smoothing (ETS).
 
+            Args:
+                h (int): The forecast horizon.
+                steps (int): The number of steps to walk forward.
+                stock_name (str): The name of the stock.
+                col (str): The column name to use for the model.
+                options (tuple): Tuple of option lists for trend and seasonal types.
+
+            Returns:
+                float: The mean squared error (MSE) of the forecast.
+        """
         best_score = float('inf')
         best_options = None
 
         for x in itertools.product(*options):
-            score = self.walkforward(h=h, steps=steps, stock_name=stock_name, col=col, tuple_of_option_lists=x)
+            score = self.walkforward_ets(h=h, steps=steps, stock_name=stock_name, col=col, tuple_of_option_lists=x)
 
             if score < best_score:
                 print("Best score so far:", score)
@@ -171,7 +164,17 @@ class StocksForecast:
         print(f"best seasonal type: {seasonal_type}")
 
     def prepare_data_var(self, stock_list, col):
+        """
+            Prepare the data for Vector Autoregression (VAR) modeling.
 
+            Args:
+                stock_list (list): List of stock names.
+                col (str): The column name to use for the model.
+
+            Returns:
+                tuple: A tuple containing the combined dataframe, train set, test set, train index,
+                       test index, stock columns, and scaled columns.
+        """
         df_all = pd.DataFrame(index=self.dfs[stock_list[0]].index)
         for stock in stock_list:
             df_all = df_all.join(self.dfs[stock][col].dropna())
@@ -204,10 +207,6 @@ class StocksForecast:
 
         df_all, train, test, train_idx, test_idx, stock_cols, cols = self.prepare_data_var(stock_list, col)
 
-        # plot_acf(train[cols[0]])
-        # plot_pacf(train[cols[0]])
-        # plot_pacf(train[cols[-1]])
-
         model = VAR(train[cols])
         result = model.fit(maxlags=40, method='mle', ic='aic')
 
@@ -215,19 +214,17 @@ class StocksForecast:
         prior = train.iloc[-lag_order:][cols].to_numpy()
         forecast_df = pd.DataFrame(result.forecast(prior, N_TEST), columns=cols)
 
-        plot_fitted_forecast(df_all, train_idx, test_idx, result, stock_cols[0], forecast_df)
+        df_all.loc[train_idx, 'fitted'] = result.fittedvalues[cols[0]]
+        df_all.loc[test_idx, 'forecast'] = forecast_df[cols[0]].values
 
-        # df_all.loc[train_idx, 'fitted'] = result.fittedvalues[cols[0]]
-        # df_all.loc[test_idx, 'forecast'] = forecast_df[cols[0]].values
-        #
-        # train_pred = df_all.loc[train_idx, 'fitted'].iloc[lag_order:]
-        # train_true = df_all.loc[train_idx, cols[0]].iloc[lag_order:]
-        #
-        # print("VAR Train R2: ", r2_score(train_true, train_pred))
-        #
-        # test_pred = df_all.loc[test_idx, 'forecast']
-        # test_true = df_all.loc[test_idx, cols[0]]
-        # print("VAR Test R2:", r2_score(test_true, test_pred))
+        col = "Scaled_" + stock_cols[0]
+        plot_fitted_forecast(df_all, col)
+
+        # Calculate R2
+        print("VAR Train R2: ", r2_score(df_all.loc[train_idx, cols[0]].iloc[lag_order:],
+                                         df_all.loc[train_idx, 'fitted'].iloc[lag_order:]))
+        print("VAR Test R2: ", r2_score(df_all.loc[test_idx, cols[0]],
+                                        df_all.loc[test_idx, 'forecast']))
 
     def run_arima(self, stock_name='UAL', col='Close', seasonal=True, m=12):
         """
@@ -239,16 +236,25 @@ class StocksForecast:
             seasonal (bool): Whether to include seasonal components. Default is True.
             m (int): The number of periods in each seasonal cycle. Default is 12.
         """
-        train, test, train_idx, test_idx = prepare_data(self.dfs[stock_name])
+        df_all = self.dfs[stock_name]
+        train, test, train_idx, test_idx = prepare_data(df_all)
+
+        plot_acf(train[col])
+        plot_pacf(train[col])
 
         model = pm.auto_arima(train[col], trace=True, suppress_warnings=True, seasonal=seasonal, m=m)
 
         print(model.summary())
 
-        plot_fitted_forecast(self.dfs[stock_name], train_idx, test_idx, model, col, arima=True)
+        df_all.loc[train_idx, 'fitted'] = model.predict_in_sample(end=-1)
+        df_all.loc[test_idx, 'forecast'] = np.array(model.predict(n_periods=N_TEST, return_conf_int=False))
+
+        plot_fitted_forecast(df_all, col)
 
 
 if __name__ == "__main__":
+
+    # parameters
     STOCK = 'UAL'
     COL = 'Log'
     N_TEST = 10
@@ -258,8 +264,8 @@ if __name__ == "__main__":
     # Hyperparameters to try in ETS walk-forward validation
     trend_type_list = ['add', 'mul']
     seasonal_type_list = ['add', 'mul']
-    init_method_list = ['estimated', 'heuristic', 'legacy-heristic']
-    use_boxcox_list = [True, False, 0]
+    init_method_list = ['estimated', 'heuristic', 'legacy-heristic']  # not used
+    use_boxcox_list = [True, False, 0]  # not used
 
     ts = StocksForecast()
 
@@ -268,5 +274,11 @@ if __name__ == "__main__":
     ts.run_arima(stock_name=STOCK, col=COL)
 
     tuple_of_option_lists = (trend_type_list, seasonal_type_list,)
+    ts.run_walkforward(H, STEPS, STOCK, COL, tuple_of_option_lists)
 
-    ts.walkforward_ets(H, STEPS, STOCK, COL, tuple_of_option_lists)
+# TODO:BUILD THE WALK-FORWARD VALIDATION SO IT WORKS FOR ALL METHODS
+# Other things that may be of interest:
+# boxcox: from scipy.stats import boxcox
+# Test for stationarity: from statsmodels.tsa.stattools import adfuller
+# VARMAX: from statsmodels.tsa.statespace.varmax import VARMAX
+# ARIMA: from statsmodels.tsa.arima.model import ARIMA
