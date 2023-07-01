@@ -409,11 +409,13 @@ If you would like to run ARIMA from `statsmodels`, you can import `ARIMA` from `
 
 ## Machine Learning Methods (Brief)
 
-## Self-supervised Learning (?)
+Briefly mentions Self-supervised Learning?
 
-## Deep Learning Methods
+## ANN
 
-## Long Short-Term Memory (LSTM)
+## CNN
+
+## RNN
 
 ## Facebook Prophet
 
