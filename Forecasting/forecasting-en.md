@@ -489,13 +489,73 @@ There are other transformations and filters performed on time-series data, for e
 
 Which brings us to CNN: convolving is applying filters on the data. The technical/mathematical details are less important for time-series data, as CNN is a widely used algorithm in computer vision (CV) and there are more nuances in that area. For our purpose, let us focus on the following aspects of CNN.
 
-First, covolution is cross correlation.
+First, convolution does pattern matching/finding with cross-correlation. Imagine a time-series with length $T=10$:
 
-Second, covolving is pattern matching.
+$$ts = [1, 4, 5, 3, 3, 4, 2, 3, 5, 3]$$
 
-Third, pooling and feature maps.
+and another vector of length $K=3$:
 
-https://towardsdatascience.com/fourier-transform-for-time-series-292eb887b101
+$$c = [1, 5, 1]$$
+
+When we convolved $ts$ with $c$, we are "sliding" $c$ over $ts$ and at each position, we compute the dot product. For example, when $c$ is overlaid on the first three values of $ts$, we have:
+
+$$[1, 5, 1] \cdot [1, 4, 5]=(1\times1)+(5\times4)+(1\times5)=26$$
+
+Repeating this process, we get a convolved version of $ts$:
+
+$$tsv = [26, 32, 23, 22, 25, 17, 22, 31]$$
+
+The resulted new vector is of size $T-K+1$, which is the `valid` mode of covolution. If we want the resulted vector to be the same size as the original, we are performing a `same` mode convolution and we need to add padding of size $K-1$. In our example, we can add two zeros to the original time series then do the convolution:
+
+$$tsz = [0, 1, 4, 5, 3, 3, 4, 5, 6, 5, 3, 0]$$
+
+How is covolution pattern matching/finding? In the above example, it easy to see that the filter $c$ has the pattern [low, high low]. In the above example, at locations 2nd and 6th, we have
+
+$$ts_2 = [4, 5, 3]; \ ts_6 = [4, 2, 3]$$
+
+The only difference is the value in the middle. It it straightforward to realize that the filter $c$ helps to identify a pattern that has [low, high, low] since $c \cdot ts_2 > c \cdot ts_6$.
+
+But there is more. If we look at $tsv$, we notice the two highest values are at locations 2nd and 8th:
+
+$$ts_2 = [4, 5, 3]; \ ts_8 = [3, 5, 3]$$
+
+They both have the pattern of [low, high, low]. In other words, the filter $c=[1, 5, 1]$ creates a spike in $tsv$ when the pattern in $ts$ is [low, high, low].
+
+In a Euclidean space, the dot product of two vectors can be expressed as
+
+$$a \cdot b = ||a|| \times ||b|| \times \cos{\theta_{ab}}$$
+
+where $||a||$ and $||b||$ are the magnitude of the two products and $\theta_{ab}$ is the angle between $a$ and $b$. Since $\cos{(0)}=1$, $\cos{(\pi/2)} = 0$, and $\cos{(\pi)}=-1$, the dot product not only measures the magnitudes of the two vectors, but also their correlations. Take an extreme example: when the angle between them is $\pi$, they are orthogonal and the dot product is equal to zero no matter the magnitude.
+
+To summarize what we have discussed so far, we say that covolution is cross-correlation. When the segment of the data is highly correlates to the filter, it creates a spike in value and hence indicates a certain pattern.
+
+Second, convolution reduces the number of parameters of the model. Let's go back to the example above. Suppose you hypothesize that there is a 3-day pattern in the data, which actually prompted the use of a filter with size 3. If you want to look at all windows of size 3 in the data, you would be looking at 8 of such windows and a total of 24 parameters, 1 for each day in each window. By using convolution and the sliding filter, you only need 3 filters: the size of the filter. This is not much of a saving in our example, but imagine the case of images, and the difference is huge.
+
+By using the filter sliding through the data, we have stopped to care where the pattern happens, but only that it has happened. This is called `translational invariance`, which is important, again, in computer vision. Imagine you have two pictures of the same cat in the same posture from the same angle, except one of them the cat is on the floor and the other up on the table. It is the same cat. Your filter should be finding the cat, and it should not care where the cat is.
+
+Translational invariance is not as prominent in time-series data, but here is one example with our stock price data: suppose every time a stock's price goes up by more than 10% in a single day, it will follow with a decline; but if the hike is less than 5%, it will follow with another hike. This is a pattern that a filter (or two) should be able to match. And it does not matter when (in analagous to where in CV) it happens.
+
+Third, and before we move on to code, we should introduce two related concepts in CNN: pooling and feature maps. Pooling reduces the size of the data. Continue with our example above with $ts$ and $c$. Suppose we do a `full` mode convolution, i.e., sliding $c$ over $tsz$, then we have the new convolved series as:
+
+$$tsf = [9, 26, 32, 23, 22, 25, 17, 22, 31, 20]$$
+
+we can perform `max` pooling on $tsf$ to reduce its size to 5. What we do is to group every two numbers, then pick the highest number from the group:
+
+$tsfp = [\{9, 26\}, \{32, 23\}, \{22, 25\}, \{17, 22\}, \{31, 20\}]$
+
+$tsfp = [26, 32, 25, 22, 31]$
+
+The other way to do pooling is `average` pooling, but max pooling is more intuitive. At a high level, pooling, especially max pooling, does two things: it reduces the size of the data but preserves the "spikes". In other words, this is another operation of "we do not care where/when as long as it happens".
+
+By convention, even though pooling has reduced the size of the data, filter size remains the same. In other words, if we overlay $c$ on $tsfp$, at the first location ($tsfp_1 = [26, 32, 25]$), $c$ is now finding patterns from the first 7 numbers in $ts$. To see this, note that the value 25 in $tsfp_1$ was calculated by
+
+$$[1, 5, 1] \cdot ts_5 \Rightarrow [1, 5, 1] \cdot [3, 4, 5]$$
+
+where the value 5 in $ts_5$ is the 7th value of $ts$. In other words, with pooling and same size filters, CNN is able to see bigger and bigger "pictures" when data is passed through the convolution layers.
+
+However, it is important to increase the number of filters after each pooling until the size of the feature map is large enough. `Feature map` is basically a collection of features. It has a more pictorial name because CNN was first developed for computer vision. The reason for the increasing size of feature map is straightforward: as data goes through the convolution layers, the filters are search wider and wider due to pooling. Increasing the number of features/filters would allow the CNN to look deeper. This helps to preserve information while transformation is happening. For time-series data, instead of a long time series, we can think of the data output from the convolution layers as a stack of many moments.
+
+After going through the covolution (and pooling) layers, the output is fed into `Dense` layers just like ANN. In a way, we can think of CNN as two-stage feature engineering: covolution layers and Dense layers.
 
 ## Facebook Prophet
 
@@ -505,4 +565,4 @@ https://facebook.github.io/prophet/
 
 ## References
 
-https://www.udemy.com/course/time-series-analysis/
+* https://www.udemy.com/course/time-series-analysis/
