@@ -407,10 +407,6 @@ Last but not leas, the `run_arima()` method runs the Auto ARIMA from the `pdmari
 
 If you would like to run ARIMA from `statsmodels`, you can import `ARIMA` from `statsmodels.tsa.arima.model`. `statsmodels` also provides functions and APIs for other time-series/forecasting methods and models. For example, you can test fo stationarity with the augmented Dickey-Fuller unit root test by importing `adfuller` from `statsmodels.tsa.stattools`, or run the Vector Autoregressive Moving Average with exogenous regressors by importing `VARMAX` from `statsmodels.tsa.statespace.varmax`. In addition, if you would like to do the Box-Cox transformation, you can import `boxcox` from `scipy.stats`.
 
-## Machine Learning Methods
-
-Briefly mentions Self-supervised Learning?
-
 ## Artificial Neural Network (ANN)
 
 Similar to other chapters, the assumption is that readers have some idea about what a neural network is and what it can do. Our goal is not to give an in-depth introduction to neural networks. Rather, we will only cover elements of neural networks that matter most in their applications in economics and business assuming readers already have some quantitative training. An excellent place that you can "play" with a neural network model is the [Tensorflow Playground](https://playground.tensorflow.org/).
@@ -437,7 +433,7 @@ where $J$ denotes the total number of layers, and $\hat{y}$ is the prediction. N
 
 While Sigmoid is a widely used function when probabilities are to be predicted, it suffers from the [vanishing gradient problem](https://en.wikipedia.org/wiki/Vanishing_gradient_problem) especially with deep (many layers) neural networks. Modern deep learning models often use `ReLU` or `tanh` as the activation function for inner layers. Again, see [this answer on stackexchange](https://stats.stackexchange.com/questions/115258/comprehensive-list-of-activation-functions-in-neural-networks-with-pros-cons) for the pros and cons of different activation functions in neural networks.
 
-### ANN in code
+## ANN in TensorFlow/Keras
 
 ## Recurrent Neural Network (RNN)
 
@@ -479,7 +475,7 @@ And the hidden state and cell state ($c_t$) are updated according to:
 
 Note that in Tensorflow, the activation function $\omega()$ and $\psi()$ can not be specified individually and are both defaulted to tanh.
 
-### RNN in code
+## RNN in TensorFlow/Keras
 
 ## Convolutional Neural Network (CNN)
 
@@ -555,15 +551,17 @@ where the value 5 in $ts_5$ is the 7th value of $ts$. In other words, with pooli
 
 However, it is important to increase the number of filters after each pooling until the size of the feature map is large enough. A `feature map` is a collection of features. It has a pictorial name because CNN was first developed for computer vision. The reason for the increasing size of feature map is straightforward: as data goes through the convolution layers, the filters are search wider and wider due to pooling. Increasing the number of features/filters would allow the CNN to look deeper. This helps to preserve information while transformation is happening. For time-series data, instead of a long time series, we can think of the data output from the convolution layers as a stack of many moments.
 
-After going through the covolution (and pooling) layers, the output is fed into `Dense` layers just like ANN. In a way, we can think of CNN as two-stage feature engineering: covolution layers and Dense layers.
+After going through the covolution (and pooling) layers, the output is fed into some `Dense` layers just like ANN. In a way, we can think of CNN as two-stage feature engineering: covolution layers and Dense layers.
 
-### CNN in code
+## CNN in TensorFlow/Keras
 
 ## Facebook Prophet
 
 https://facebook.github.io/prophet/
 
 ## Summary
+
+brief disucssion on self-supervised learning?
 
 ## References
 
