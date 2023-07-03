@@ -6,17 +6,15 @@ Time Series, Forecasting, and Deep Learning Algorithms
 
 ## Introduction
 
-This chapter is structurally different from other chapters. In the next section, we will first look at Python implementations. We will implement time-series/forecasting models that are not based on machine learning algorithms mainly using the Python library `statsmodels`. This serves both as a review for forecasting concepts and an introduction to the `statsmodels` library, another widely used python library for statistical/data analysis.
+This chapter is structurally different from other chapters. In the next section, we will first look at Python implementations. We will implement time-series/forecasting models that are not based on machine learning algorithms. This mainly uses the Python library `statsmodels`. The section serves both as a review of forecasting concepts and an introduction to the `statsmodels` library, another widely used Python library for statistical/data analysis.
 
-We will then cover, briefly, how we can transform a forecasting problem into one of `machine learning`'s. Such transformation allows us to use regression and classification algorithms to tackle complicated forecasting tasks. We have already introduced **classification** algorithms in the last chapter. Machine learning **regression** algorithms, however, is deferred to the next chapter. But readers with a quantitative background should have no problem linking forecasting to regression models.
+The main emphasis of this chapter, however, is the use of `deep learning` models for forecasting tasks. We will introduce three neural network models: `Artificial Neural Networks` (ANN), `Reccurent Neural Networks` (RNN), and `Convolutional Neural Networks` (CNN). We will implement these methods in Python using `TensorFlow`. The chapter ends with the introduction to `Facebook`'s `Prophet` library, which is a widely-used library for forecasting in the industry.
 
-The main emphasis of this chapter is the use of `deep learning` models for forecasting tasks. For this, we will look at how different neural network models, including `Artificial Neural Networks` (ANN), `Convolutional Neural Networks` (CNN), and `Reccurent Neural Networks` (RNN) may be useful. We will implement some of these methods in Python using `TensorFlow`. Finally, this chapter ends with the introduction to `Facebook`'s `Prophet` library, which is a widely-used library in the industry.
-
-**Forecasting** should require no further introduction. At its simplest form, you have a time series data set, which is contains values of a single object/individual overtime, and you try to predict the "next" value into the future. In more complicated cases, you can have covariates/features, as long as these features are observable at the moment of forecasting and do not result in the **information leakage**"**. For example, if you are doing weather forecast and your goal is to forecast whether it is going to rain tomorrow, then a time-series dataset would contain only information of whether it has rained or not for the past many days, whereas additional features such as temperature, dew point, and precipitation may be included. These additional weather variables should be from the day before your forecast, not the day of your forecast when you are training your model. A class example of information leakage happens when forecasting with moving average (MA) values. For example, if you are doing a 3-day MA, then the value of today requires the use of the value from tomorrow, which is only possible in historic data but not with real data.
+**Forecasting** should need no further introduction. At its simplest form, you have a time series data set, which contains values of a single object/individual overtime, and you try to predict the "next" value into the future. In more complicated cases, you can have covariates/features, as long as these features are observable at the moment of forecasting and do not result in **information leakage**"**. For example, if you are doing weather forecast and your goal is to forecast whether it is going to rain tomorrow, then a time-series dataset would contain only information of whether it has rained or not in the past many days, whereas additional features such as temperature, dew point, and precipitation may be included. These additional weather variables should be from the day before your forecast, not the day of your forecast when you are training your model. A classic example of information leakage happens when forecasting with moving average (MA) values. For example, if you are doing a 3-day MA, then the value of today requires the use of the value from tomorrow, which is only possible in historic data but not with real data.
 
 ## Time Series Implementation in `statsmodels`
 
-In this section, we will implement three forecasting models: `Exponential Smoothing (ETS)`, `Vector Autoregression (VAR)`, and `Auto Autoregressive Integrated Moving Average (ARIMA)`. ETS and ARIMA are run with a single time series, whereas VAR uses several. The data set we will use is U.S. stock exchange (close) prices from the python library `yfinance`. For ETS, we will also implement a walk-forward validation, which is the correct form of validation for time series data, analogue to cross validation seen in the last chapters. To show the powerfulness of Auto Machine Learning, we will implement auto ARIMA from the python library `pmdarima`. Here is the python script:
+In this section, we will implement three forecasting models: `Exponential Smoothing (ETS)`, `Vector Autoregression (VAR)`, and `Autoregressive Integrated Moving Average (ARIMA)`. ETS and ARIMA are run with a single time series, whereas VAR uses several. The data set we will use is U.S. stock exchange (close) prices from the Python library `yfinance`. For ETS, we will also implement a walk-forward validation, which is the correct form of validation for time series data, analogue to cross validation seen in the last chapters. To show the powerfulness of Auto Machine Learning, we will implement auto ARIMA from the Python library `pmdarima`. Here is the full Python script:
 
 ```python
 import yfinance as yf
@@ -298,7 +296,7 @@ if __name__ == "__main__":
     ts.run_walkforward(H, STEPS, STOCK, COL, tuple_of_option_lists)
 ```
 
-As in other chapters, a `class`, named `StocksForecast`, is written. In the beginning the script, we have two static methods/functions outside of the class for data preparation and plotting. In side the `StockForecast` class, we initiate the class with:
+As in other chapters, a `class`, named `StocksForecast`, is written. In the beginning of the script, we have two static methods/functions outside of the class for data preparation and plotting. For `StockForecast`, we initiate the class with:
 
 1. download the data
 2. store data into a `dictionary` with each stock in a different key
@@ -350,17 +348,15 @@ Each algorithm is implemented inside a wrapper function. For example, the ETS im
         plot_fitted_forecast(df_all, col)
 ```
 
-A walk-forward validation for ETS is implemented in by the method `run_walkforward()` (from Lazy Programmer) which is a wrapper function of `warlkforward_ets()`. For time series data, we can not perform cross-validation by selecting a random subset of observations, as this can result in using future values to predict past value. Instead, a n-step walk-forward validation should be used. Suppose we have data from 1/1/2018 to 12/31/2022, a 1-step walk-forward validation using data from December 2022 would involve the following steps:
+A walk-forward validation for ETS is implemented by the method `run_walkforward()` (largely from Lazy Programmer) which is a wrapper function of `warlkforward_ets()`. For time series data, we can not perform cross-validation by selecting a random subset of observations, as this can result in using future values to predict past value. Instead, a n-step walk-forward validation should be used. Suppose we have data from 1/1/2018 to 12/31/2022, a 1-step walk-forward validation using data from December 2022 would involve the following steps:
 
 1. train the model with data from 1/1/2018 to 11/30/2022
 2. with model result, make prediction for 12/1/2022
-3. compare the true and predicted values and calculate the error or other desire metric
+3. compare the true and predicted values and calculate the error or other desire metric(s)
 4. "walk forward" by 1 day, then go back to training the model, i.e., train the model with data from 1/1/2018 to 12/1/2022
 5. continue until data from 1/1/2018 to 12/30/2022 is used for training and 12/31/2022 is predicted
 
-The following method inside the `StocksForecast` class implements the walk-forward validation:
-
-We should try several different hyperparameter combinations since the purpose of the walk-forward validation is to choose the "best" hyperparameters. The following lines inside `if __name__ == "__main__":` calls the `run_walkforward()` method to try a combination of hyperparameters and prints out the "best" values for `trend` and `seasonal`:
+We should try several different hyperparameter combinations since the purpose of the walk-forward validation is to choose the "best" hyperparameters. The following lines inside `if __name__ == "__main__":` calls the `run_walkforward()` method to try a combination of hyperparameters, which also prints out the "best" values for `trend` and `seasonal`:
 
 ```python
     H = 20  # 4 weeks
@@ -376,7 +372,7 @@ We should try several different hyperparameter combinations since the purpose of
 
 The method `run_var()` runs the VAR model. Since we run VAR with several stocks, standardized/normalized should be performed. This is accomplished in the `prepare_data_var()` method with `StandardScaler()` from scikit-learn. 
 
-Last but not leas, the `run_arima()` method runs the Auto ARIMA from the `pdmarima` library. Here, we also call `plot_acf()` and `plot_pacf()` from sci-kit learn to examine the autocorrelation and partial autocorrelation functions. Normally, they are important for the ARIMA model. However, with Auto ARIMA, we are spared of the task of manually determine the values of AR() and MA(). Similar to `run_ets()`, there are only a few lines of code:
+Last but not leas, the `run_arima()` method runs the Auto ARIMA from the `pdmarima` library. Here, we also call `plot_acf()` and `plot_pacf()` from scikit-learn to examine the autocorrelation and partial autocorrelation functions. Normally, they are important for the ARIMA model. However, with Auto ARIMA, we are spared of the task of manually determine the values of AR() and MA(). Similar to `run_ets()`, there are only a few lines of code:
 
 ```python
     def run_arima(self, stock_name='UAL', col='Close', seasonal=True, m=12):
@@ -405,7 +401,7 @@ Last but not leas, the `run_arima()` method runs the Auto ARIMA from the `pdmari
         plot_fitted_forecast(df_all, col)
 ```
 
-If you would like to run ARIMA from `statsmodels`, you can import `ARIMA` from `statsmodels.tsa.arima.model`. `statsmodels` also provides functions and APIs for other time-series/forecasting methods and models. For example, you can test fo stationarity with the augmented Dickey-Fuller unit root test by importing `adfuller` from `statsmodels.tsa.stattools`, or run the Vector Autoregressive Moving Average with exogenous regressors by importing `VARMAX` from `statsmodels.tsa.statespace.varmax`. In addition, if you would like to do the Box-Cox transformation, you can import `boxcox` from `scipy.stats`.
+If you would like to run ARIMA from `statsmodels`, you can import `ARIMA` from `statsmodels.tsa.arima.model`. `statsmodels` also provides functions and APIs for other time-series/forecasting methods and models. For example, you can test for stationarity with the augmented Dickey-Fuller unit root test by importing `adfuller` from `statsmodels.tsa.stattools`, or run the Vector Autoregressive Moving Average with exogenous regressors by importing `VARMAX` from `statsmodels.tsa.statespace.varmax`. In addition, if you would like to do the Box-Cox transformation, you can import `boxcox` from `scipy.stats`.
 
 ## Artificial Neural Network (ANN)
 
