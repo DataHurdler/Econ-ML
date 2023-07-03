@@ -483,6 +483,18 @@ Note that in Tensorflow, the activation function $\omega()$ and $\psi()$ can not
 
 ## Convolutional Neural Network (CNN)
 
+`Convolutional Neural Network` (CNN) is another deep learning algorithm that we can connect to traditional time-series/forecasting methods easily. Consider a typical ARIMA model, which has three parameters: $p$, $q$, and $d$. These parameters dictates the number of periods in, respectively, autoregressive, moving average, and differencing. An alternative way to look at the ARIMA model is that the original time series data is transformed based on the three parameters.
+
+There are other transformations and filters performed on time-series data, for example, Fourier transformation, low-pass filter, Baxter-King filter, to name a few. Exponential smoothing, which we have shown its implementation using `statsmodels` earlier, is also a filter. Differencing and autoregressive process are also filters.
+
+Which brings us to CNN: convolving is applying filters on the data. The technical/mathematical details are less important for time-series data, as CNN is a widely used algorithm in computer vision (CV) and there are more nuances in that area. For our purpose, let us focus on the following aspects of CNN.
+
+First, covolution is cross correlation.
+
+Second, covolving is pattern matching.
+
+Third, pooling and feature maps.
+
 https://towardsdatascience.com/fourier-transform-for-time-series-292eb887b101
 
 ## Facebook Prophet
