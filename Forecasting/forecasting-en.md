@@ -553,9 +553,11 @@ $$[1, 5, 1] \cdot ts_5 \Rightarrow [1, 5, 1] \cdot [3, 4, 5]$$
 
 where the value 5 in $ts_5$ is the 7th value of $ts$. In other words, with pooling and same size filters, CNN is able to see bigger and bigger "pictures" when data is passed through the convolution layers.
 
-However, it is important to increase the number of filters after each pooling until the size of the feature map is large enough. `Feature map` is basically a collection of features. It has a more pictorial name because CNN was first developed for computer vision. The reason for the increasing size of feature map is straightforward: as data goes through the convolution layers, the filters are search wider and wider due to pooling. Increasing the number of features/filters would allow the CNN to look deeper. This helps to preserve information while transformation is happening. For time-series data, instead of a long time series, we can think of the data output from the convolution layers as a stack of many moments.
+However, it is important to increase the number of filters after each pooling until the size of the feature map is large enough. A `feature map` is a collection of features. It has a pictorial name because CNN was first developed for computer vision. The reason for the increasing size of feature map is straightforward: as data goes through the convolution layers, the filters are search wider and wider due to pooling. Increasing the number of features/filters would allow the CNN to look deeper. This helps to preserve information while transformation is happening. For time-series data, instead of a long time series, we can think of the data output from the convolution layers as a stack of many moments.
 
 After going through the covolution (and pooling) layers, the output is fed into `Dense` layers just like ANN. In a way, we can think of CNN as two-stage feature engineering: covolution layers and Dense layers.
+
+### CNN in code
 
 ## Facebook Prophet
 
