@@ -34,14 +34,16 @@ def prepare_data(df, col, ann=False, multistep=False):
     X = []
     Y = []
 
+    start_idx = N_TEST
     if multistep:
         for t in range(len(series) - T - N_TEST + 1):
-            x = series[t:t + N_TEST]
+            x = series[t:t + T]
             X.append(x)
             y = series[t + T:t + T + N_TEST]
             Y.append(y)
 
         Y = np.array(Y).reshape(-1, N_TEST)
+        start_idx = 1
     else:
         for t in range(len(series) - T):
             x = series[t:t + T]
@@ -58,8 +60,8 @@ def prepare_data(df, col, ann=False, multistep=False):
 
     N = len(X)
 
-    Xtrain, Ytrain = X[:-N_TEST], Y[:-N_TEST]
-    Xtest, Ytest = X[-N_TEST:], Y[-N_TEST:]
+    Xtrain, Ytrain = X[:-start_idx], Y[:-start_idx]
+    Xtest, Ytest = X[-start_idx:], Y[-start_idx:]
 
     return Xtrain, Ytrain, Xtest, Ytest, train_idx, test_idx, N, D
 
@@ -101,12 +103,16 @@ def cnn(D):
     return i, x
 
 
-def make_predictions(df, col, train_idx, test_idx, Xtrain, Xtest, model, multistep=False):
+def make_predictions(df, col, train_idx, test_idx, Xtrain, Xtest, model, ann=False, multistep=False):
     train = df.iloc[:-N_TEST]
-    train_idx[:T+1] = False  # not predictable
+    train_idx[:T + 1] = False  # not predictable
 
-    Ptrain = model.predict(Xtrain).flatten()
-    Ptest = model.predict(Xtest).flatten()
+    if multistep:
+        Ptrain = model.predict(Xtrain)[:, 0]
+        Ptest = model.predict(Xtest)[0]
+    else:
+        Ptrain = model.predict(Xtrain).flatten()
+        Ptest = model.predict(Xtest).flatten()
 
     df.loc[train_idx, 'Diff Train Prediction'] = Ptrain
     df.loc[test_idx, 'Diff Test Prediction'] = Ptest
@@ -127,7 +133,6 @@ def make_predictions(df, col, train_idx, test_idx, Xtrain, Xtest, model, multist
 
     # Last known train value
     last_train = train.iloc[-1][col]
-    print(prev.shape, Ptrain.shape)
     # 1-step forecast
     df.loc[train_idx, '1step_train'] = prev[train_idx].squeeze() + Ptrain
     df.loc[test_idx, '1step_test'] = prev[test_idx].squeeze() + Ptest
@@ -145,15 +150,17 @@ def make_predictions(df, col, train_idx, test_idx, Xtrain, Xtest, model, multist
     last_x = Xtest[0]
 
     while len(multistep_predictions) < N_TEST:
-      # p = model.predict(last_x.reshape(1, -1))[0]  # ANN
-      p = model.predict(last_x.reshape(1, -1, 1))[0]  # CNN and RNN
+        if ann:
+            p = model.predict(last_x.reshape(1, -1))[0]  # ANN
+        else:
+            p = model.predict(last_x.reshape(1, -1, 1))[0]  # CNN and RNN
 
-      # update the predictions list
-      multistep_predictions.append(p)
+        # update the predictions list
+        multistep_predictions.append(p)
 
-      # make the new input
-      last_x = np.roll(last_x, -1)
-      last_x[-1] = p
+        # make the new input
+        last_x = np.roll(last_x, -1)
+        last_x[-1] = p
 
     df.loc[test_idx, 'multistep'] = last_train[0] + np.cumsum(multistep_predictions)
 
@@ -246,102 +253,44 @@ class StocksForecastDL:
         plt.legend()
         plt.show()
 
-        make_predictions(df_all, col, train_idx, test_idx, Xtrain, Xtest, model)
+        make_predictions(df_all, col, train_idx, test_idx, Xtrain, Xtest, model, ann_bool, multistep)
 
 
 if __name__ == "__main__":
     np.random.seed(42)
     tf.random.set_seed(42)
-    N_TEST = 10
+    N_TEST = 12
     T = 10
     EPOCHS = 50
 
+    plt.ion()
+
     ts = StocksForecastDL()
     # ANN only works with single col for now
-    ts.run_onestep_forecast(model="ann")
+    # ts.run_onestep_forecast(model="ann")
     # ts.run_onestep_forecast(model="cnn")
     # ts.run_onestep_forecast(model="rnn", rnn_model="simpleRNN")
     # ts.run_onestep_forecast(model="rnn", rnn_model="gru")
     # ts.run_onestep_forecast(model="rnn", rnn_model="lstm")
-    # ts.run_onestep_forecast(model="ann", multistep=True)
+    ts.run_onestep_forecast(model="ann", multistep=True)
     # ts.run_onestep_forecast(model="cnn", multistep=True)
     # ts.run_onestep_forecast(model="rnn", rnn_model="simpleRNN", multistep=True)
     # ts.run_onestep_forecast(model="rnn", rnn_model="gru", multistep=True)
     # ts.run_onestep_forecast(model="rnn", rnn_model="lstm", multistep=True)
 
 #
-# # make multi-output supervsied dataset
-# Tx = T
-# Ty = Ntest
-# X = []
-# Y = []
-#
-# for t in range(len(series) - Tx - Ty + 1):
-#   x = series[t:t+Tx]
-#   X.append(x)
-#   y = series[t+Tx:t+Tx+Ty]
-#   Y.append(y)
-#
-# # X = np.array(X).reshape(-1, Tx) # ANN
-# X = np.array(X).reshape(-1, Tx, 1) # CNN
-# Y = np.array(Y).reshape(-1, Ty)
-# N = len(X)
-# print("Y.shape", Y.shape, "X.shape", X.shape)
-#
-# Xtrain_m, Ytrain_m = X[:-1], Y[:-1]
-# Xtest_m, Ytest_m = X[-1:], Y[-1:]
-#
-# # Basic ANN
-# i = Input(shape=(Tx,))
-# x = Dense(32, activation='relu')(i)
-#
-# # RNN
-# i = Input(shape=(Tx, 1))
-# x = LSTM(32, return_sequences=True)(i)
-# x = LSTM(32)(x)
-#
-# # CNN
-# i = Input(shape=(Tx, 1))
-# x = Conv1D(16, 3, activation='relu', padding='same')(i)
-# x = MaxPooling1D(2)(x)
-# x = Conv1D(32, 3, activation='relu', padding='same')(i)
-# x = GlobalMaxPooling1D()(x)
-#
-# x = Dense(Ty)(x)
-# model = Model(i, x)
-#
-# model.summary()
-#
 # check_point = ModelCheckpoint(
 #     'best_model.h5', monitor='val_loss', save_best_only=True
 # )
 #
-# model.compile(
-#     loss='mse',
-#     optimizer='adam',
-#     metrics='mae',
-# )
-#
-# r = model.fit(
-#     Xtrain_m,
-#     Ytrain_m,
-#     epochs=100,
-#     validation_data=(Xtest_m, Ytest_m),
-#     callbacks=[check_point],
-# )
-#
-# plt.plot(r.history['loss'], label='train loss')
-# plt.plot(r.history['val_loss'], label='test lsos')
-# plt.legend()
-# plt.show()
-#
 # best_model = tf.keras.models.load_model('best_model.h5')
-#
+
+
 # Ptrain = model.predict(Xtrain_m)
 # Ptest = model.predict(Xtest_m)
 # print(Ptrain.shape, Ptest.shape)
 #
-# Ptrain = Ptrain[:,0] # prediction for 1 stemp ahead (zeroth row)
+# Ptrain = Ptrain[:,0] # prediction for 1 step ahead (zeroth row)
 # Ptest = Ptest[0]
 #
 # df.loc[test_idx, 'Diff Multi-Output Test Prediction'] = Ptest
