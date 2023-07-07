@@ -2,6 +2,8 @@ import pandas as pd
 import numpy as np
 import yfinance as yf
 import matplotlib.pyplot as plt
+import warnings
+import sys
 
 import tensorflow as tf
 from tensorflow.keras.layers import Dense, Input # ANN
@@ -11,6 +13,8 @@ from tensorflow.keras.models import Model
 from tensorflow.keras.callbacks import ModelCheckpoint
 
 from sklearn.metrics import mean_absolute_percentage_error
+
+# TODO:ANN should support multiple inputs/outputs
 
 
 def prepare_data_onestep(df, col, ann=False):
@@ -35,19 +39,55 @@ def prepare_data_onestep(df, col, ann=False):
         y = series[t + T]
         Y.append(y)
 
-    if ann & D == 1:
+    if ann and D == 1:
         X = np.array(X).reshape(-1, T)
     else:
         X = np.array(X).reshape(-1, T, D)  # For CNN and RNN
 
     Y = np.array(Y)
     N = len(X)
-    print(N, X.shape)
 
     Xtrain, Ytrain = X[:-N_TEST], Y[:-N_TEST]
     Xtest, Ytest = X[-N_TEST:], Y[-N_TEST:]
 
-    return Xtrain, Ytrain, Xtest, Ytest, train_idx, test_idx
+    return Xtrain, Ytrain, Xtest, Ytest, train_idx, test_idx, N, D
+
+
+def ann(num_layers=32):
+    # Basic ANN
+    i = Input(shape=(T, ))
+    x = Dense(num_layers, activation='relu')(i)
+    x = Dense(num_layers, activation='relu')(x)
+
+    return i, x
+
+
+def rnn(D, num_layers=32, rnn_model="lstm"):
+    i = Input(shape=(T, D))
+    # can use SimpleRNN/GRU/LSTM
+    if rnn_model == 'lstm':
+        x = LSTM(num_layers, return_sequences=True)(i)  # default is tanh
+        x = LSTM(num_layers,)(x)
+    elif rnn_model == 'gru':
+        x = GRU(num_layers, return_sequences=True)(i)  # default is tanh
+        x = GRU(num_layers, )(x)
+    else:
+        x = SimpleRNN(num_layers, return_sequences=True)(i)  # default is tanh
+        x = SimpleRNN(num_layers, )(x)
+    # when return_sequences=True, can use GlobalMaxPooling1D after wards
+
+    return i, x
+
+
+def cnn(D):
+    # CNN (1D for time series, 2D for images)
+    i = Input(shape=(T, D))  # single value time series
+    x = Conv1D(16, 3, activation='relu', padding='same')(i)
+    x = MaxPooling1D(2)(x)
+    x = Conv1D(32, 3, activation='relu', padding='same')(x)
+    x = GlobalMaxPooling1D()(x)
+
+    return i, x
 
 
 class StocksForecastDL:
@@ -69,67 +109,76 @@ class StocksForecastDL:
             self.dfs[name]['Diff'] = self.dfs[name]['Close'].diff(1)
             self.dfs[name]['Log'] = np.log(self.dfs[name]['Close'])
 
-    def run_onestep_forecast(self, stock_name='UAL', col='Log', diff=True):
+    def run_onestep_forecast(self,
+                             stock_name='UAL',
+                             col: list = ['Log'],
+                             diff=True,
+                             model="cnn",
+                             *args, **kwargs):
         df_all = self.dfs[stock_name]
-        if diff:
-            df_all[f'Diff{col}'] = df_all[col].diff()
-            col = f'Diff{col}'
 
-        prepare_data_onestep(df=df_all, col=col, ann=False)
+        if len(col) > 1 and model == "ann":
+            warnings.warn("Currently, ANN only runs with a single variable.")
+            sys.exit(1)
+
+        if diff:
+            for c in col:
+                df_all[f'Diff{c}'] = df_all[c].diff()
+            col = ["Diff" + word for word in col]
+
+        if model == 'ann':
+            ann_bool = True
+        else:
+            ann_bool = False
+
+        output = prepare_data_onestep(df=df_all, col=col, ann=ann_bool)
+        Xtrain, Ytrain, Xtest, Ytest, train_idx, test_idx, N, D = output
+
+        build_model = eval(model)
+        if model == 'ann':
+            i, x = build_model(*args, **kwargs)
+        else:
+            i, x = build_model(D=D, *args, **kwargs)
+
+        x = Dense(D)(x)
+        model = Model(i, x)
+
+        model.summary()  # CNN and RNN (ANN?)
+
+        # change loss for classification and other tasks
+        # BinaryCrossentropy(from_logits=True)
+        # SparseCategoricalCrossentropy(from_logits=True)
+        model.compile(
+            loss='mse',
+            optimizer='adam',
+            metrics='mae',
+        )
+
+        r = model.fit(
+            Xtrain,
+            Ytrain,
+            epochs=EPOCHS,
+            validation_data=(Xtest, Ytest),
+        )
+
+        plt.plot(r.history['loss'], label='train loss')
+        plt.plot(r.history['val_loss'], label='test loss')
+        plt.legend()
+        plt.show()
+
 
 if __name__ == "__main__":
     np.random.seed(42)
     tf.random.set_seed(42)
     N_TEST = 10
     T = 10
+    EPOCHS = 200
 
     ts = StocksForecastDL()
-    ts.run_onestep_forecast()
+    # ANN only works with single col for now
+    ts.run_onestep_forecast(col=['Log', 'Close'], model="cnn")
+    # ts.run_onestep_forecast(col=['Log', 'Close'], model="rnn", rnn_model="simpleRNN")
 
-# # Basic ANN
-# i = Input(shape=(T,))
-# x = Dense(32, activation='relu')(i)
-#
-# # RNN
-#
-# i = Input(shape=(T, 1))
-# # can use SimpleRNN/GRU/LSTM
-# x = LSTM(32, return_sequences=True)(i) # default is tanh
-# x = LSTM(32)(x)
-# # when return_sequences=True, can use GlobalMaxPooling1D afterwards
-#
-# # CNN (1D for time series, 2D for images)
-#
-# i = Input(shape=(T, 1)) # single value time series
-# x = Conv1D(16, 3, activation='relu', padding='same')(i)
-# x = MaxPooling1D(2)(x)
-# x = Conv1D(32, 3, activation='relu', padding='same')(x)
-# x = GlobalMaxPooling1D()(x)
-#
-# x = Dense(1)(x)
-# model = Model(i, x)
-#
-# model.summary() # CNN and RNN (ANN?)
-#
-# # change loss for classification and other tasks
-# model.compile(
-#     loss='mse',
-#     optimizer='adam',
-#     metrics='mae',
-# )
-#
-# r = model.fit(
-#     Xtrain,
-#     Ytrain,
-#     epochs=100,
-#     validation_data=(Xtest, Ytest),
-# )
-#
-# plt.plot(r.history['loss'], label='train loss')
-# plt.plot(r.history['val_loss'], label='test loss')
-# plt.legend()
-# plt.show()
-#
 # train_idx[:T+1] = False # not predictable
 #
 # Ptrain = model.predict(Xtrain).flatten()
