@@ -1,4 +1,4 @@
-import pandas as pd
+# import pandas as pd
 import numpy as np
 import yfinance as yf
 import matplotlib.pyplot as plt
@@ -103,7 +103,7 @@ def cnn(D):
     return i, x
 
 
-def make_predictions(df, col, train_idx, test_idx, Xtrain, Xtest, model, ann=False, multistep=False):
+def make_predictions(df, orig_col, col, train_idx, test_idx, Xtrain, Xtest, model, ann=False, multistep=False):
     train = df.iloc[:-N_TEST]
     train_idx[:T + 1] = False  # not predictable
 
@@ -114,36 +114,27 @@ def make_predictions(df, col, train_idx, test_idx, Xtrain, Xtest, model, ann=Fal
         Ptrain = model.predict(Xtrain).flatten()
         Ptest = model.predict(Xtest).flatten()
 
-    df.loc[train_idx, 'Diff Train Prediction'] = Ptrain
-    df.loc[test_idx, 'Diff Test Prediction'] = Ptest
-
-    cols = ['Diff Train Prediction',
-            'Diff Test Prediction',
-            ]
-
-    df[cols].plot(figsize=(15, 5))
-    plt.show()
-
     # Need to computer un-differenced predictions
-    for c in col:
+    for c in orig_col:
         df[f'Shift{c}'] = df[c].shift(1)
 
-    new_col = ["Shift" + word for word in col]
+    new_col = ["Shift" + word for word in orig_col]
     prev = df[new_col]
 
     # Last known train value
-    last_train = train.iloc[-1][col]
-    # 1-step forecast
-    df.loc[train_idx, '1step_train'] = prev[train_idx].squeeze() + Ptrain
-    df.loc[test_idx, '1step_test'] = prev[test_idx].squeeze() + Ptest
-
-    col2 = ['1step_train',
-            '1step_test',
-            ]
-    df[col2].plot(figsize=(15, 5))
-    plt.show()
+    last_train = train.iloc[-1][orig_col]
 
     if not multistep:
+        # 1-step forecast
+        df.loc[train_idx, '1step_train'] = prev[train_idx].squeeze() + Ptrain
+        df.loc[test_idx, '1step_test'] = prev[test_idx].squeeze() + Ptest
+
+        col2 = ['1step_train',
+                '1step_test',
+                ]
+        df[col2].plot(figsize=(15, 5))
+        plt.show()
+
         # multi-step forecast for single step model
         multistep_predictions = []
 
@@ -161,7 +152,7 @@ def make_predictions(df, col, train_idx, test_idx, Xtrain, Xtest, model, ann=Fal
 
             # make the new input
             last_x = np.roll(last_x, -1)
-            last_x[-1] = p
+            last_x[-1] = p[0]
 
         df.loc[test_idx, 'multistep'] = last_train[0] + np.cumsum(multistep_predictions)
 
@@ -171,12 +162,8 @@ def make_predictions(df, col, train_idx, test_idx, Xtrain, Xtest, model, ann=Fal
         df[col3].plot(figsize=(15, 5))
         plt.show()
 
-        return_col = ['1step_train', '1step_test', 'multistep']
-        return df[return_col]
-
     else:
         df.loc[test_idx, 'multioutput'] = last_train[0] + np.cumsum(Ptest)
-        return df['multioutput']
 
 
 class StocksForecastDL:
@@ -198,6 +185,9 @@ class StocksForecastDL:
             self.dfs[name]['Diff'] = self.dfs[name]['Close'].diff(1)
             self.dfs[name]['Log'] = np.log(self.dfs[name]['Close'])
 
+        self.train_idx = []
+        self.test_idx = []
+
     def run_forecast(self,
                      stock_name: str = 'UAL',
                      col: list = ['Log'],
@@ -215,15 +205,18 @@ class StocksForecastDL:
         if diff:
             for c in col:
                 df_all[f'Diff{c}'] = df_all[c].diff()
-            col = ["Diff" + word for word in col]
+            new_col = ["Diff" + word for word in col]
 
         if model == 'ann':
             ann_bool = True
         else:
             ann_bool = False
 
-        output = prepare_data(df=df_all, col=col, ann=ann_bool, multistep=multistep)
+        output = prepare_data(df=df_all, col=new_col, ann=ann_bool, multistep=multistep)
         Xtrain, Ytrain, Xtest, Ytest, train_idx, test_idx, N, D = output
+
+        self.train_idx = train_idx
+        self.test_idx = test_idx
 
         build_model = eval(model)
         if model == 'ann':
@@ -254,6 +247,7 @@ class StocksForecastDL:
             Ytrain,
             epochs=EPOCHS,
             validation_data=(Xtest, Ytest),
+            verbose='auto',
         )
 
         plt.plot(r.history['loss'], label='train loss')
@@ -261,28 +255,35 @@ class StocksForecastDL:
         plt.legend()
         plt.show()
 
-        df_pred = make_predictions(df_all, col, train_idx, test_idx, Xtrain, Xtest, model, ann_bool, multistep)
-
-        return df_pred
+        make_predictions(df_all, col, new_col, train_idx, test_idx, Xtrain, Xtest, model, ann_bool, multistep)
 
     def single_model_comparison(self,
                                 stock_name: str = 'UAL',
                                 col: list = ['Log'],
                                 diff=True,
                                 model="cnn",
-                                multistep=False,
+                                # rnn_model="lstm",
                                 *args, **kwargs):
 
         df_all = self.dfs[stock_name]
-        onestep_df = self.run_forecast(model="ann")
-        multistep_df = self.run_forecast(model="ann", multistep=True)
 
-        print("df_all:", df_all.info())
-        # print("onestep_df:", onestep_df.info())
-        # print("multistep_df:", multistep_df.info())
+        self.run_forecast(model=model, diff=diff, **kwargs)
+        self.run_forecast(model=model, diff=diff, multistep=True, **kwargs)
 
-        df = df_all.merge(onestep_df, left_index=True, right_index=True, how='left')
-        df = df.merge(multistep_df, left_index=True, right_index=True, how='left')
+        pred_cols = col + ['multistep', '1step_test', 'multioutput']
+        df_all[pred_cols][-(N_TEST * 3):].plot(figsize=(15, 5))
+        plt.show()
+
+        # MAPE
+        test_log_pass = df_all.iloc[-N_TEST:][col]
+        mape1 = mean_absolute_percentage_error(
+            test_log_pass, df_all.loc[self.test_idx, 'multistep']
+        )
+        print("multi-step MAPE:", mape1)
+        mape2 = mean_absolute_percentage_error(
+            test_log_pass, df_all.loc[self.test_idx, 'multioutput']
+        )
+        print("multi-output MAPE:", mape2)
 
         return df_all
 
@@ -294,7 +295,7 @@ if __name__ == "__main__":
     T = 10
     EPOCHS = 50
 
-    plt.ion()
+    # plt.ion()
 
     ts = StocksForecastDL()
     # ANN only works with single col for now
@@ -309,41 +310,10 @@ if __name__ == "__main__":
     # ts.run_forecast(model="rnn", rnn_model="gru", multistep=True)
     # ts.run_forecast(model="rnn", rnn_model="lstm", multistep=True)
 
-    df = ts.single_model_comparison()
-    print(df.tail(20))
-    print(df.info())
+    df = ts.single_model_comparison(model="ann", diff=True)
 
-#
 # check_point = ModelCheckpoint(
 #     'best_model.h5', monitor='val_loss', save_best_only=True
 # )
 #
 # best_model = tf.keras.models.load_model('best_model.h5')
-
-
-# Ptrain = model.predict(Xtrain_m)
-# Ptest = model.predict(Xtest_m)
-# print(Ptrain.shape, Ptest.shape)
-#
-# Ptrain = Ptrain[:,0] # prediction for 1 step ahead (zeroth row)
-# Ptest = Ptest[0]
-#
-# df.loc[test_idx, 'Diff Multi-Output Test Prediction'] = Ptest
-# col5 = ['DiffLogPassengers', 'Diff Multi-Output Test Prediction']
-# df[col5].plot(figsize=(15, 5));
-#
-# df.loc[test_idx, 'multioutput'] = last_train + np.cumsum(Ptest)
-#
-# col4 = ['LogPassengers', 'multistep', '1step_test', 'multioutput']
-# df[col4].plot(figsize=(15, 5));
-#
-# # MAPE
-# test_log_pass = df.iloc[-Ntest:]['LogPassengers']
-# mape1 = mean_absolute_percentage_error(
-#     test_log_pass, df.loc[test_idx, 'multistep']
-# )
-# print("multi-step MAPE:", mape1)
-# mape2 = mean_absolute_percentage_error(
-#     test_log_pass, df.loc[test_idx, 'multioutput']
-# )
-# print("multi-output MAPE:", mape2)
