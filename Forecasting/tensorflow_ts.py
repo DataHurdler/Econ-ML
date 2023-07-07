@@ -143,32 +143,40 @@ def make_predictions(df, col, train_idx, test_idx, Xtrain, Xtest, model, ann=Fal
     df[col2].plot(figsize=(15, 5))
     plt.show()
 
-    # multi-step forecast
-    multistep_predictions = []
+    if not multistep:
+        # multi-step forecast for single step model
+        multistep_predictions = []
 
-    # first test input
-    last_x = Xtest[0]
+        # first test input
+        last_x = Xtest[0]
 
-    while len(multistep_predictions) < N_TEST:
-        if ann:
-            p = model.predict(last_x.reshape(1, -1))[0]  # ANN
-        else:
-            p = model.predict(last_x.reshape(1, -1, 1))[0]  # CNN and RNN
+        while len(multistep_predictions) < N_TEST:
+            if ann:
+                p = model.predict(last_x.reshape(1, -1))[0]  # ANN
+            else:
+                p = model.predict(last_x.reshape(1, -1, 1))[0]  # CNN and RNN
 
-        # update the predictions list
-        multistep_predictions.append(p)
+            # update the predictions list
+            multistep_predictions.append(p)
 
-        # make the new input
-        last_x = np.roll(last_x, -1)
-        last_x[-1] = p
+            # make the new input
+            last_x = np.roll(last_x, -1)
+            last_x[-1] = p
 
-    df.loc[test_idx, 'multistep'] = last_train[0] + np.cumsum(multistep_predictions)
+        df.loc[test_idx, 'multistep'] = last_train[0] + np.cumsum(multistep_predictions)
 
-    col3 = ['multistep',
-            '1step_test',
-            ]
-    df[col3].plot(figsize=(15, 5))
-    plt.show()
+        col3 = ['multistep',
+                '1step_test',
+                ]
+        df[col3].plot(figsize=(15, 5))
+        plt.show()
+
+        return_col = ['1step_train', '1step_test', 'multistep']
+        return df[return_col]
+
+    else:
+        df.loc[test_idx, 'multioutput'] = last_train[0] + np.cumsum(Ptest)
+        return df['multioutput']
 
 
 class StocksForecastDL:
@@ -190,13 +198,13 @@ class StocksForecastDL:
             self.dfs[name]['Diff'] = self.dfs[name]['Close'].diff(1)
             self.dfs[name]['Log'] = np.log(self.dfs[name]['Close'])
 
-    def run_onestep_forecast(self,
-                             stock_name: str = 'UAL',
-                             col: list = ['Log'],
-                             diff=True,
-                             model="cnn",
-                             multistep=False,
-                             *args, **kwargs):
+    def run_forecast(self,
+                     stock_name: str = 'UAL',
+                     col: list = ['Log'],
+                     diff=True,
+                     model="cnn",
+                     multistep=False,
+                     *args, **kwargs):
         df_all = self.dfs[stock_name]
 
         D = len(col)
@@ -253,7 +261,30 @@ class StocksForecastDL:
         plt.legend()
         plt.show()
 
-        make_predictions(df_all, col, train_idx, test_idx, Xtrain, Xtest, model, ann_bool, multistep)
+        df_pred = make_predictions(df_all, col, train_idx, test_idx, Xtrain, Xtest, model, ann_bool, multistep)
+
+        return df_pred
+
+    def single_model_comparison(self,
+                                stock_name: str = 'UAL',
+                                col: list = ['Log'],
+                                diff=True,
+                                model="cnn",
+                                multistep=False,
+                                *args, **kwargs):
+
+        df_all = self.dfs[stock_name]
+        onestep_df = self.run_forecast(model="ann")
+        multistep_df = self.run_forecast(model="ann", multistep=True)
+
+        print("df_all:", df_all.info())
+        # print("onestep_df:", onestep_df.info())
+        # print("multistep_df:", multistep_df.info())
+
+        df = df_all.merge(onestep_df, left_index=True, right_index=True, how='left')
+        df = df.merge(multistep_df, left_index=True, right_index=True, how='left')
+
+        return df_all
 
 
 if __name__ == "__main__":
@@ -267,16 +298,20 @@ if __name__ == "__main__":
 
     ts = StocksForecastDL()
     # ANN only works with single col for now
-    # ts.run_onestep_forecast(model="ann")
-    # ts.run_onestep_forecast(model="cnn")
-    # ts.run_onestep_forecast(model="rnn", rnn_model="simpleRNN")
-    # ts.run_onestep_forecast(model="rnn", rnn_model="gru")
-    # ts.run_onestep_forecast(model="rnn", rnn_model="lstm")
-    ts.run_onestep_forecast(model="ann", multistep=True)
-    # ts.run_onestep_forecast(model="cnn", multistep=True)
-    # ts.run_onestep_forecast(model="rnn", rnn_model="simpleRNN", multistep=True)
-    # ts.run_onestep_forecast(model="rnn", rnn_model="gru", multistep=True)
-    # ts.run_onestep_forecast(model="rnn", rnn_model="lstm", multistep=True)
+    # ts.run_forecast(model="ann")
+    # ts.run_forecast(model="cnn")
+    # ts.run_forecast(model="rnn", rnn_model="simpleRNN")
+    # ts.run_forecast(model="rnn", rnn_model="gru")
+    # ts.run_forecast(model="rnn", rnn_model="lstm")
+    # ts.run_forecast(model="ann", multistep=True)
+    # ts.run_forecast(model="cnn", multistep=True)
+    # ts.run_forecast(model="rnn", rnn_model="simpleRNN", multistep=True)
+    # ts.run_forecast(model="rnn", rnn_model="gru", multistep=True)
+    # ts.run_forecast(model="rnn", rnn_model="lstm", multistep=True)
+
+    df = ts.single_model_comparison()
+    print(df.tail(20))
+    print(df.info())
 
 #
 # check_point = ModelCheckpoint(
