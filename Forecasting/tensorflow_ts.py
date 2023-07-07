@@ -6,18 +6,19 @@ import warnings
 import sys
 
 import tensorflow as tf
-from tensorflow.keras.layers import Dense, Input # ANN
-from tensorflow.keras.layers import LSTM, GRU, SimpleRNN # RNN
-from tensorflow.keras.layers import Conv1D, MaxPooling1D, GlobalMaxPooling1D # CNN
+from tensorflow.keras.layers import Dense, Input  # ANN
+from tensorflow.keras.layers import LSTM, GRU, SimpleRNN  # RNN
+from tensorflow.keras.layers import Conv1D, MaxPooling1D, GlobalMaxPooling1D  # CNN
 from tensorflow.keras.models import Model
 from tensorflow.keras.callbacks import ModelCheckpoint
 
 from sklearn.metrics import mean_absolute_percentage_error
 
-# TODO:ANN should support multiple inputs/outputs
+
+# TODO:Support for multiple inputs/outputs
 
 
-def prepare_data_onestep(df, col, ann=False):
+def prepare_data(df, col, ann=False, multistep=False):
     train = df.iloc[:-N_TEST]
     test = df.iloc[-N_TEST:]
     train_idx = df.index <= train.index[-1]
@@ -33,18 +34,28 @@ def prepare_data_onestep(df, col, ann=False):
     X = []
     Y = []
 
-    for t in range(len(series) - T):
-        x = series[t:t + T]
-        X.append(x)
-        y = series[t + T]
-        Y.append(y)
+    if multistep:
+        for t in range(len(series) - T - N_TEST + 1):
+            x = series[t:t + N_TEST]
+            X.append(x)
+            y = series[t + T:t + T + N_TEST]
+            Y.append(y)
+
+        Y = np.array(Y).reshape(-1, N_TEST)
+    else:
+        for t in range(len(series) - T):
+            x = series[t:t + T]
+            X.append(x)
+            y = series[t + T]
+            Y.append(y)
+
+        Y = np.array(Y)
 
     if ann and D == 1:
         X = np.array(X).reshape(-1, T)
     else:
         X = np.array(X).reshape(-1, T, D)  # For CNN and RNN
 
-    Y = np.array(Y)
     N = len(X)
 
     Xtrain, Ytrain = X[:-N_TEST], Y[:-N_TEST]
@@ -55,7 +66,7 @@ def prepare_data_onestep(df, col, ann=False):
 
 def ann(num_layers=32):
     # Basic ANN
-    i = Input(shape=(T, ))
+    i = Input(shape=(T,))
     x = Dense(num_layers, activation='relu')(i)
     x = Dense(num_layers, activation='relu')(x)
 
@@ -67,7 +78,7 @@ def rnn(D, num_layers=32, rnn_model="lstm"):
     # can use SimpleRNN/GRU/LSTM
     if rnn_model == 'lstm':
         x = LSTM(num_layers, return_sequences=True)(i)  # default is tanh
-        x = LSTM(num_layers,)(x)
+        x = LSTM(num_layers, )(x)
     elif rnn_model == 'gru':
         x = GRU(num_layers, return_sequences=True)(i)  # default is tanh
         x = GRU(num_layers, )(x)
@@ -90,11 +101,74 @@ def cnn(D):
     return i, x
 
 
+def make_predictions(df, col, train_idx, test_idx, Xtrain, Xtest, model, multistep=False):
+    train = df.iloc[:-N_TEST]
+    train_idx[:T+1] = False  # not predictable
+
+    Ptrain = model.predict(Xtrain).flatten()
+    Ptest = model.predict(Xtest).flatten()
+
+    df.loc[train_idx, 'Diff Train Prediction'] = Ptrain
+    df.loc[test_idx, 'Diff Test Prediction'] = Ptest
+
+    cols = ['Diff Train Prediction',
+            'Diff Test Prediction',
+            ]
+
+    df[cols].plot(figsize=(15, 5))
+    plt.show()
+
+    # Need to computer un-differenced predictions
+    for c in col:
+        df[f'Shift{c}'] = df[c].shift(1)
+
+    new_col = ["Shift" + word for word in col]
+    prev = df[new_col]
+
+    # Last known train value
+    last_train = train.iloc[-1][col]
+    print(prev.shape, Ptrain.shape)
+    # 1-step forecast
+    df.loc[train_idx, '1step_train'] = prev[train_idx].squeeze() + Ptrain
+    df.loc[test_idx, '1step_test'] = prev[test_idx].squeeze() + Ptest
+
+    col2 = ['1step_train',
+            '1step_test',
+            ]
+    df[col2].plot(figsize=(15, 5))
+    plt.show()
+
+    # multi-step forecast
+    multistep_predictions = []
+
+    # first test input
+    last_x = Xtest[0]
+
+    while len(multistep_predictions) < N_TEST:
+      # p = model.predict(last_x.reshape(1, -1))[0]  # ANN
+      p = model.predict(last_x.reshape(1, -1, 1))[0]  # CNN and RNN
+
+      # update the predictions list
+      multistep_predictions.append(p)
+
+      # make the new input
+      last_x = np.roll(last_x, -1)
+      last_x[-1] = p
+
+    df.loc[test_idx, 'multistep'] = last_train[0] + np.cumsum(multistep_predictions)
+
+    col3 = ['multistep',
+            '1step_test',
+            ]
+    df[col3].plot(figsize=(15, 5))
+    plt.show()
+
+
 class StocksForecastDL:
     def __init__(self,
                  stock_name_list=('UAL', 'WMT', 'PFE'),
                  start_date='2018-01-01',
-                 end_date='2022-12-31',):
+                 end_date='2022-12-31', ):
         """
         Initialize the StocksForecast class.
 
@@ -110,14 +184,16 @@ class StocksForecastDL:
             self.dfs[name]['Log'] = np.log(self.dfs[name]['Close'])
 
     def run_onestep_forecast(self,
-                             stock_name='UAL',
+                             stock_name: str = 'UAL',
                              col: list = ['Log'],
                              diff=True,
                              model="cnn",
+                             multistep=False,
                              *args, **kwargs):
         df_all = self.dfs[stock_name]
 
-        if len(col) > 1 and model == "ann":
+        D = len(col)
+        if D > 1 and model == "ann":
             warnings.warn("Currently, ANN only runs with a single variable.")
             sys.exit(1)
 
@@ -131,7 +207,7 @@ class StocksForecastDL:
         else:
             ann_bool = False
 
-        output = prepare_data_onestep(df=df_all, col=col, ann=ann_bool)
+        output = prepare_data(df=df_all, col=col, ann=ann_bool, multistep=multistep)
         Xtrain, Ytrain, Xtest, Ytest, train_idx, test_idx, N, D = output
 
         build_model = eval(model)
@@ -140,7 +216,11 @@ class StocksForecastDL:
         else:
             i, x = build_model(D=D, *args, **kwargs)
 
-        x = Dense(D)(x)
+        if multistep:
+            x = Dense(N_TEST)(x)
+        else:
+            x = Dense(1)(x)
+
         model = Model(i, x)
 
         model.summary()  # CNN and RNN (ANN?)
@@ -166,72 +246,29 @@ class StocksForecastDL:
         plt.legend()
         plt.show()
 
+        make_predictions(df_all, col, train_idx, test_idx, Xtrain, Xtest, model)
+
 
 if __name__ == "__main__":
     np.random.seed(42)
     tf.random.set_seed(42)
     N_TEST = 10
     T = 10
-    EPOCHS = 200
+    EPOCHS = 50
 
     ts = StocksForecastDL()
     # ANN only works with single col for now
-    ts.run_onestep_forecast(col=['Log', 'Close'], model="cnn")
-    # ts.run_onestep_forecast(col=['Log', 'Close'], model="rnn", rnn_model="simpleRNN")
+    ts.run_onestep_forecast(model="ann")
+    # ts.run_onestep_forecast(model="cnn")
+    # ts.run_onestep_forecast(model="rnn", rnn_model="simpleRNN")
+    # ts.run_onestep_forecast(model="rnn", rnn_model="gru")
+    # ts.run_onestep_forecast(model="rnn", rnn_model="lstm")
+    # ts.run_onestep_forecast(model="ann", multistep=True)
+    # ts.run_onestep_forecast(model="cnn", multistep=True)
+    # ts.run_onestep_forecast(model="rnn", rnn_model="simpleRNN", multistep=True)
+    # ts.run_onestep_forecast(model="rnn", rnn_model="gru", multistep=True)
+    # ts.run_onestep_forecast(model="rnn", rnn_model="lstm", multistep=True)
 
-# train_idx[:T+1] = False # not predictable
-#
-# Ptrain = model.predict(Xtrain).flatten()
-# Ptest = model.predict(Xtest).flatten()
-#
-# df.loc[train_idx, 'Diff ANN Train Prediction'] = Ptrain
-# df.loc[test_idx, 'Diff ANN Test Prediction'] = Ptest
-#
-# cols = ['DiffLogPassengers',
-#         'Diff Train Prediction',
-#         'Diff Test Prediction',]
-#
-# df[cols].plot(figsize=(15, 5));
-#
-# # Need to computer un-differenced predictions
-# df['ShiftLogPassengers'] = df['LogPassengers'].shift(1)
-# prev = df['ShiftLogPassengers']
-#
-# # Last known train value
-# last_train = train.iloc[-1]['LogPassengers']
-#
-# # 1-step forecast
-# df.loc[train_idx, '1step_train'] = prev[train_idx] + Ptrain
-# df.loc[test_idx, '1step_test'] = prev[test_idx] + Ptest
-#
-# col2 = ['LogPassengers',
-#         '1step_train',
-#         '1step_test',]
-# df[col2].plot(figsize=(15, 5));
-#
-# # multi-step forecast
-# multistep_predictions = []
-#
-# # first test input
-# last_x = Xtest[0]
-#
-# while len(multistep_predictions) < Ntest:
-#   # p = model.predict(last_x.reshape(1, -1))[0] # ANN
-#   p = model.predict(last_x.reshape(1, -1, 1))[0] # CNN and RNN
-#
-#   # update the predictions list
-#   multistep_predictions.append(p)
-#
-#   # make the new input
-#   last_x = np.roll(last_x, -1)
-#   last_x[-1] = p
-#
-# df.loc[test_idx, 'multistep'] = last_train + np.cumsum(multistep_predictions)
-#
-# col3 = ['LogPassengers',
-#         'multistep',
-#         '1step_test',]
-# df[col3].plot(figsize=(15, 5))
 #
 # # make multi-output supervsied dataset
 # Tx = T
