@@ -14,6 +14,7 @@ from tensorflow.keras.models import Model
 
 from sklearn.metrics import mean_absolute_percentage_error
 
+
 # TODO:Support for multiple inputs/outputs
 
 
@@ -61,7 +62,7 @@ class StocksForecastDL:
                  end_date='2022-12-31',
                  t=10,
                  n_test=12,
-                 epochs=200,):
+                 epochs=200, ):
         """
         Initialize the StocksForecast class.
 
@@ -91,9 +92,9 @@ class StocksForecastDL:
         # Make supervised dataset
         series = df[col].dropna().to_numpy()
         try:
-            D = series.shape[1]
-        except:
-            D = 1
+            d = series.shape[1]
+        except AttributeError:
+            d = 1
 
         X = []
         Y = []
@@ -117,17 +118,17 @@ class StocksForecastDL:
 
             Y = np.array(Y)
 
-        if ann and D == 1:
+        if ann and d == 1:
             X = np.array(X).reshape(-1, self.T)
         else:
-            X = np.array(X).reshape(-1, self.T, D)  # For CNN and RNN
+            X = np.array(X).reshape(-1, self.T, d)  # For CNN and RNN
 
         N = len(X)
 
         Xtrain, Ytrain = X[:-start_idx], Y[:-start_idx]
         Xtest, Ytest = X[-start_idx:], Y[-start_idx:]
 
-        return Xtrain, Ytrain, Xtest, Ytest, train_idx, test_idx, N, D
+        return Xtrain, Ytrain, Xtest, Ytest, train_idx, test_idx, N, d
 
     def make_predictions(self, df, orig_col, train_idx, test_idx, Xtrain, Xtest, model, ann=False, multistep=False):
         train = df.iloc[:-self.N_TEST]
@@ -205,10 +206,11 @@ class StocksForecastDL:
             warnings.warn("Currently, ANN only runs with a single variable.")
             sys.exit(1)
 
+        new_col = col.copy()
         if diff:
             for c in col:
                 df_all[f'Diff{c}'] = df_all[c].diff()
-            new_col = ["Diff" + word for word in col]
+            new_col = ["Diff" + word for word in new_col]
 
         if model == 'ann':
             ann_bool = True
@@ -294,25 +296,10 @@ if __name__ == "__main__":
     np.random.seed(42)
     tf.random.set_seed(42)
 
-    # plt.ion()
+    plt.ion()
 
-    ts = StocksForecastDL(t=20, epochs=1000)
-    # ANN only works with single col for now
-    # ts.run_forecast(model="ann")
-    # ts.run_forecast(model="cnn")
-    # ts.run_forecast(model="rnn", rnn_model="simpleRNN")
-    # ts.run_forecast(model="rnn", rnn_model="gru")
-    # ts.run_forecast(model="rnn", rnn_model="lstm")
-    # ts.run_forecast(model="ann", multistep=True)
-    # ts.run_forecast(model="cnn", multistep=True)
-    # ts.run_forecast(model="rnn", rnn_model="simpleRNN", multistep=True)
-    # ts.run_forecast(model="rnn", rnn_model="gru", multistep=True)
-    # ts.run_forecast(model="rnn", rnn_model="lstm", multistep=True)
+    ts = StocksForecastDL(t=20, epochs=100)
 
-    df = ts.single_model_comparison(model="rnn", rnn_model="lstm", diff=True)
-
-# check_point = ModelCheckpoint(
-#     'best_model.h5', monitor='val_loss', save_best_only=True
-# )
-#
-# best_model = tf.keras.models.load_model('best_model.h5')
+    ts.single_model_comparison(model="ann", diff=True)
+    ts.single_model_comparison(model="cnn", diff=True)
+    ts.single_model_comparison(model="rnn", rnn_model="lstm", diff=True)
