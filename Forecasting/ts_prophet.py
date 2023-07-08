@@ -9,12 +9,22 @@ from prophet.plot import add_changepoints_to_plot
 
 
 class StocksForecastProphet:
-    def __init__(self,
-                 stock_name_list=('UAL', 'WMT', 'PFE'),
-                 start_date='2018-01-01',
-                 end_date='2022-12-31',
-                 n_test=12,
-                 ):
+    def __init__(
+        self,
+        stock_name_list=('UAL', 'WMT', 'PFE'),
+        start_date='2018-01-01',
+        end_date='2022-12-31',
+        n_test=12,
+    ):
+        """
+        Initialize the StocksForecastProphet class.
+
+        Args:
+            stock_name_list (tuple): List of stock names.
+            start_date (str): Start date for data retrieval.
+            end_date (str): End date for data retrieval.
+            n_test (int): Number of test samples.
+        """
         self.N_TEST = n_test
         self.dfs = dict()
         for name in stock_name_list:
@@ -22,35 +32,35 @@ class StocksForecastProphet:
             self.dfs[name]['Diff'] = self.dfs[name]['Close'].diff(1)
             self.dfs[name]['Log'] = np.log(self.dfs[name]['Close'])
             self.dfs[name]['DiffLog'] = self.dfs[name]['Log'].diff(1)
-
-            # rename according to prophet rule
             self.dfs[name]['ds'] = self.dfs[name].index
 
-    def run_prophet(self,
-                    stock_name: str = 'UAL',
-                    col: str = 'Log',
-                    diff: bool = True,
-                    ):
+    def run_prophet(
+        self,
+        stock_name: str = 'UAL',
+        col: str = 'Log',
+        diff: bool = True,
+    ):
+        """
+        Run the Prophet forecasting model for a given stock.
 
+        Args:
+            stock_name (str): Name of the stock.
+            col (str): Column to be used for forecasting.
+            diff (bool): Indicates whether differencing is applied.
+        """
         df0 = self.dfs[stock_name]
         df0['y'] = df0[col]
         df = df0[:-self.N_TEST].copy()
 
-        m = Prophet(yearly_seasonality=True,
-                    weekly_seasonality=True)
+        m = Prophet(yearly_seasonality=True, weekly_seasonality=True)
         m.fit(df)
 
-        # construct a df for prediction
         future = m.make_future_dataframe(periods=self.N_TEST)
-
-        # forecast does not contain the original y values
         forecast = m.predict(future)
 
         fig1 = m.plot(forecast, figsize=(28, 8))
-
         fig2 = m.plot_components(forecast)
 
-        # df_cv has the original y values
         df_cv = cross_validation(
             m,
             initial='730 days',
@@ -69,7 +79,6 @@ class StocksForecastProphet:
 
 
 if __name__ == "__main__":
-
     ts = StocksForecastProphet()
     ts.run_prophet()
 

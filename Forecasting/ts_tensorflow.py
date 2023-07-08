@@ -15,11 +15,17 @@ from tensorflow.keras.models import Model
 from sklearn.metrics import mean_absolute_percentage_error
 
 
-# TODO:Support for multiple inputs/outputs
-
-
 def ann(T, num_layers=32):
-    # Basic ANN
+    """
+    Create a basic Artificial Neural Network (ANN) model.
+
+    Args:
+        T (int): Time steps or input size.
+        num_layers (int): Number of layers in the ANN.
+
+    Returns:
+        tuple: Input and output tensors of the ANN model.
+    """
     i = Input(shape=(T,))
     x = Dense(num_layers, activation='relu')(i)
     x = Dense(num_layers, activation='relu')(x)
@@ -28,25 +34,44 @@ def ann(T, num_layers=32):
 
 
 def rnn(T, D, num_layers=32, rnn_model="lstm"):
+    """
+    Create a Recurrent Neural Network (RNN) model.
+
+    Args:
+        T (int): Time steps or input size.
+        D (int): Dimensionality of the input.
+        num_layers (int): Number of layers in the RNN.
+        rnn_model (str): RNN model type ('lstm', 'gru', or 'simple_rnn').
+
+    Returns:
+        tuple: Input and output tensors of the RNN model.
+    """
     i = Input(shape=(T, D))
-    # can use SimpleRNN/GRU/LSTM
     if rnn_model == 'lstm':
-        x = LSTM(num_layers, return_sequences=True)(i)  # default is tanh
-        x = LSTM(num_layers, )(x)
+        x = LSTM(num_layers, return_sequences=True)(i)
+        x = LSTM(num_layers)(x)
     elif rnn_model == 'gru':
-        x = GRU(num_layers, return_sequences=True)(i)  # default is tanh
-        x = GRU(num_layers, )(x)
+        x = GRU(num_layers, return_sequences=True)(i)
+        x = GRU(num_layers)(x)
     else:
-        x = SimpleRNN(num_layers, return_sequences=True)(i)  # default is tanh
-        x = SimpleRNN(num_layers, )(x)
-    # when return_sequences=True, can use GlobalMaxPooling1D after wards
+        x = SimpleRNN(num_layers, return_sequences=True)(i)
+        x = SimpleRNN(num_layers)(x)
 
     return i, x
 
 
 def cnn(T, D):
-    # CNN (1D for time series, 2D for images)
-    i = Input(shape=(T, D))  # single value time series
+    """
+    Create a Convolutional Neural Network (CNN) model.
+
+    Args:
+        T (int): Time steps or input size.
+        D (int): Dimensionality of the input.
+
+    Returns:
+        tuple: Input and output tensors of the CNN model.
+    """
+    i = Input(shape=(T, D))
     x = Conv1D(16, 3, activation='relu', padding='same')(i)
     x = MaxPooling1D(2)(x)
     x = Conv1D(32, 3, activation='relu', padding='same')(x)
@@ -56,21 +81,25 @@ def cnn(T, D):
 
 
 class StocksForecastDL:
-    def __init__(self,
-                 stock_name_list=('UAL', 'WMT', 'PFE'),
-                 start_date='2018-01-01',
-                 end_date='2022-12-31',
-                 t=10,
-                 n_test=12,
-                 epochs=200,
-                 ):
+    def __init__(
+        self,
+        stock_name_list=('UAL', 'WMT', 'PFE'),
+        start_date='2018-01-01',
+        end_date='2022-12-31',
+        t=10,
+        n_test=12,
+        epochs=200,
+    ):
         """
-        Initialize the StocksForecast class.
+        Initialize the StocksForecastDL class.
 
         Args:
-            stock_name_list (list[str]): List of stock names. Default is ('UAL', 'WMT', 'PFE').
-            start_date (str): Start date of the data. Default is '2018-01-01'.
-            end_date (str): End date of the data. Default is '2022-12-31'.
+            stock_name_list (tuple): List of stock names.
+            start_date (str): Start date for data retrieval.
+            end_date (str): End date for data retrieval.
+            t (int): Number of time steps.
+            n_test (int): Number of test samples.
+            epochs (int): Number of training epochs.
         """
         self.T = t
         self.N_TEST = n_test
@@ -85,12 +114,23 @@ class StocksForecastDL:
         self.test_idx = []
 
     def prepare_data(self, df, col, ann=False, multistep=False):
+        """
+        Prepare the data for training and testing.
+
+        Args:
+            df (DataFrame): Input data.
+            col (list): List of columns to be used.
+            ann (bool): Indicates whether ANN model is used.
+            multistep (bool): Indicates whether multistep prediction is performed.
+
+        Returns:
+            tuple: Prepared data for training and testing.
+        """
         train = df.iloc[:-self.N_TEST]
         test = df.iloc[-self.N_TEST:]
         train_idx = df.index <= train.index[-1]
         test_idx = df.index > train.index[-1]
 
-        # Make supervised dataset
         series = df[col].dropna().to_numpy()
         try:
             d = series.shape[1]
@@ -122,7 +162,7 @@ class StocksForecastDL:
         if ann and d == 1:
             X = np.array(X).reshape(-1, self.T)
         else:
-            X = np.array(X).reshape(-1, self.T, d)  # For CNN and RNN
+            X = np.array(X).reshape(-1, self.T, d)
 
         N = len(X)
 
@@ -132,8 +172,22 @@ class StocksForecastDL:
         return Xtrain, Ytrain, Xtest, Ytest, train_idx, test_idx, N, d
 
     def make_predictions(self, df, orig_col, train_idx, test_idx, Xtrain, Xtest, model, ann=False, multistep=False):
+        """
+        Make predictions using the trained model.
+
+        Args:
+            df (DataFrame): Input data.
+            orig_col (list): Original columns used for predictions.
+            train_idx (bool): Index of training samples.
+            test_idx (bool): Index of test samples.
+            Xtrain (ndarray): Training input data.
+            Xtest (ndarray): Test input data.
+            model (Model): Trained model.
+            ann (bool): Indicates whether ANN model is used.
+            multistep (bool): Indicates whether multistep prediction is performed.
+        """
         train = df.iloc[:-self.N_TEST]
-        train_idx[:self.T + 1] = False  # not predictable
+        train_idx[:self.T + 1] = False
 
         if multistep:
             Ptrain = model.predict(Xtrain)[:, 0]
@@ -142,64 +196,56 @@ class StocksForecastDL:
             Ptrain = model.predict(Xtrain).flatten()
             Ptest = model.predict(Xtest).flatten()
 
-        # Need to computer un-differenced predictions
         for c in orig_col:
             df[f'Shift{c}'] = df[c].shift(1)
 
         new_col = ["Shift" + word for word in orig_col]
         prev = df[new_col]
 
-        # Last known train value
         last_train = train.iloc[-1][orig_col]
 
         if not multistep:
-            # 1-step forecast
             df.loc[train_idx, '1step_train'] = prev[train_idx].squeeze() + Ptrain
             df.loc[test_idx, '1step_test'] = prev[test_idx].squeeze() + Ptest
 
-            col2 = ['1step_train',
-                    '1step_test',
-                    ]
+            col2 = ['1step_train', '1step_test']
             df[col2].plot(figsize=(15, 5))
             plt.show()
 
-            # multi-step forecast for single step model
             multistep_predictions = []
-
-            # first test input
             last_x = Xtest[0]
 
             while len(multistep_predictions) < self.N_TEST:
                 if ann:
-                    p = model.predict(last_x.reshape(1, -1))[0]  # ANN
+                    p = model.predict(last_x.reshape(1, -1))[0]
                 else:
-                    p = model.predict(last_x.reshape(1, -1, 1))[0]  # CNN and RNN
+                    p = model.predict(last_x.reshape(1, -1, 1))[0]
 
-                # update the predictions list
                 multistep_predictions.append(p)
-
-                # make the new input
                 last_x = np.roll(last_x, -1)
                 last_x[-1] = p[0]
 
             df.loc[test_idx, 'multistep'] = last_train[0] + np.cumsum(multistep_predictions)
 
-            col3 = ['multistep',
-                    '1step_test',
-                    ]
+            col3 = ['multistep', '1step_test']
             df[col3].plot(figsize=(15, 5))
             plt.show()
 
         else:
             df.loc[test_idx, 'multioutput'] = last_train[0] + np.cumsum(Ptest)
 
-    def run_forecast(self,
-                     stock_name: str = 'UAL',
-                     col: list = ['Log'],
-                     diff=True,
-                     model="cnn",
-                     multistep=False,
-                     **kwargs):
+    def run_forecast(self, stock_name: str = 'UAL', col: list = ['Log'], diff=True, model="cnn", multistep=False, **kwargs):
+        """
+        Run the forecast for a given stock.
+
+        Args:
+            stock_name (str): Name of the stock.
+            col (list): List of columns to be used.
+            diff (bool): Indicates whether differencing is applied.
+            model (str): Model type ('ann', 'rnn', or 'cnn').
+            multistep (bool): Indicates whether multistep prediction is performed.
+            **kwargs: Additional keyword arguments for the selected model.
+        """
         df_all = self.dfs[stock_name]
 
         D = len(col)
@@ -237,11 +283,8 @@ class StocksForecastDL:
 
         model = Model(i, x)
 
-        model.summary()  # CNN and RNN (ANN?)
+        model.summary()
 
-        # change loss for classification and other tasks
-        # BinaryCrossentropy(from_logits=True)
-        # SparseCategoricalCrossentropy(from_logits=True)
         model.compile(
             loss='mse',
             optimizer='adam',
@@ -263,13 +306,20 @@ class StocksForecastDL:
 
         self.make_predictions(df_all, col, train_idx, test_idx, Xtrain, Xtest, model, ann_bool, multistep)
 
-    def single_model_comparison(self,
-                                stock_name: str = 'UAL',
-                                col: list = ['Log'],
-                                diff=True,
-                                model="cnn",
-                                **kwargs):
+    def single_model_comparison(self, stock_name: str = 'UAL', col: list = ['Log'], diff=True, model="cnn", **kwargs):
+        """
+        Perform a comparison of a single model for a given stock.
 
+        Args:
+            stock_name (str): Name of the stock.
+            col (list): List of columns to be used.
+            diff (bool): Indicates whether differencing is applied.
+            model (str): Model type ('ann', 'rnn', or 'cnn').
+            **kwargs: Additional keyword arguments for the selected model.
+
+        Returns:
+            DataFrame: DataFrame containing the predictions and evaluation metrics.
+        """
         df_all = self.dfs[stock_name]
 
         self.run_forecast(model=model, diff=diff, **kwargs)
@@ -279,15 +329,10 @@ class StocksForecastDL:
         df_all[pred_cols][-(self.N_TEST * 3):].plot(figsize=(15, 5))
         plt.show()
 
-        # MAPE
         test_log_pass = df_all.iloc[-self.N_TEST:][col]
-        mape1 = mean_absolute_percentage_error(
-            test_log_pass, df_all.loc[self.test_idx, 'multistep']
-        )
+        mape1 = mean_absolute_percentage_error(test_log_pass, df_all.loc[self.test_idx, 'multistep'])
         print("multi-step MAPE:", mape1)
-        mape2 = mean_absolute_percentage_error(
-            test_log_pass, df_all.loc[self.test_idx, 'multioutput']
-        )
+        mape2 = mean_absolute_percentage_error(test_log_pass, df_all.loc[self.test_idx, 'multioutput'])
         print("multi-output MAPE:", mape2)
 
         return df_all
