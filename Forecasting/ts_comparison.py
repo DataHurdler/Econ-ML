@@ -31,7 +31,7 @@ if __name__ == "__main__":
     p = StocksForecastProphet(stock_name_list=stock_list)
 
     for stock in stock_list:
-        dl.single_model_comparison(stock_name=stock)
-        print(dl.dfs[stock].head(1))
+        # dl.single_model_comparison(stock_name=stock)
+        # print(dl.dfs[stock].tail())
         p.run_prophet(stock_name=stock)
-        print(p.dfs[f"f_{stock}"].head(1))
+        print(p.dfs[stock].tail())

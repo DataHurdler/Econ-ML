@@ -33,7 +33,6 @@ class StocksForecastProphet:
             self.dfs[name]['Log'] = np.log(self.dfs[name]['Close'])
             self.dfs[name]['DiffLog'] = self.dfs[name]['Log'].diff(1)
             self.dfs[name]['ds'] = self.dfs[name].index
-            self.dfs[f"f_{name}"] = pd.DataFrame()
 
     def run_prophet(
         self,
@@ -57,9 +56,9 @@ class StocksForecastProphet:
         m = Prophet(yearly_seasonality=True, weekly_seasonality=True)
         m.fit(df)
 
-        future = m.make_future_dataframe(periods=self.N_TEST)
-        self.dfs[f"f_{stock_name}"] = m.predict(future)
+        future = self.dfs[stock_name]['ds'].reset_index()
         forecast = m.predict(future)
+        self.dfs[stock_name]['yhat'] = forecast['yhat'].values
 
         if cv:
             df_cv = cross_validation(
