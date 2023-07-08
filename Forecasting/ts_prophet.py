@@ -33,11 +33,13 @@ class StocksForecastProphet:
             self.dfs[name]['Log'] = np.log(self.dfs[name]['Close'])
             self.dfs[name]['DiffLog'] = self.dfs[name]['Log'].diff(1)
             self.dfs[name]['ds'] = self.dfs[name].index
+            self.dfs[f"f_{name}"] = pd.DataFrame()
 
     def run_prophet(
         self,
         stock_name: str = 'UAL',
         col: str = 'Log',
+        cv = False,
         diff: bool = True,
     ):
         """
@@ -56,26 +58,26 @@ class StocksForecastProphet:
         m.fit(df)
 
         future = m.make_future_dataframe(periods=self.N_TEST)
+        self.dfs[f"f_{stock_name}"] = m.predict(future)
         forecast = m.predict(future)
 
-        fig1 = m.plot(forecast, figsize=(28, 8))
-        fig2 = m.plot_components(forecast)
+        if cv:
+            df_cv = cross_validation(
+                m,
+                initial='730 days',
+                period='30 days',
+                horizon='30 days',
+                disable_tqdm=True,
+            )
 
-        df_cv = cross_validation(
-            m,
-            initial='730 days',
-            period='30 days',
-            horizon='30 days',
-            disable_tqdm=True,
-        )
+            pm = performance_metrics(df_cv)
+            print(pm)
 
-        pm = performance_metrics(df_cv)
-        print(pm)
-
-        plot_cross_validation_metric(df_cv, metric='mape')
+            plot_cross_validation_metric(df_cv, metric='mape')
 
         fig = m.plot(forecast, figsize=(28, 8))
         a = add_changepoints_to_plot(fig.gca(), m, forecast)
+        fig2 = m.plot_components(forecast)
 
 
 if __name__ == "__main__":

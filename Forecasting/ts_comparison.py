@@ -23,7 +23,8 @@ def run_comparison():
 if __name__ == "__main__":
     plt.ion()
 
-    stock_list = ('AAPL', 'UAL', 'WMT', 'PFE', 'MA', 'MCD', 'OXY', 'BA', 'GE', 'GM')
+    stock_list = ('AAPL', 'UAL')
+    # stock_list = ('AAPL', 'UAL', 'WMT', 'PFE', 'MA', 'MCD', 'OXY', 'BA', 'GE', 'GM')
     N_TEST_list = (5, 10, 20, 50, 100, 200)
 
     dl = StocksForecastDL(stock_name_list=stock_list)
@@ -31,3 +32,6 @@ if __name__ == "__main__":
 
     for stock in stock_list:
         dl.single_model_comparison(stock_name=stock)
+        print(dl.dfs[stock].head(1))
+        p.run_prophet(stock_name=stock)
+        print(p.dfs[f"f_{stock}"].head(1))

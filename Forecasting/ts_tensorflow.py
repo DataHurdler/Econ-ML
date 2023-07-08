@@ -336,8 +336,8 @@ class StocksForecastDL:
         """
         # df_all = self.dfs[stock_name]
 
-        self.run_forecast(model=model, diff=diff, **kwargs)
-        self.run_forecast(model=model, diff=diff, multistep=True, **kwargs)
+        self.run_forecast(model=model, stock_name=stock_name, diff=diff, **kwargs)
+        self.run_forecast(model=model, stock_name=stock_name, diff=diff, multistep=True, **kwargs)
 
         pred_cols = col + ['multistep', '1step_test', 'multioutput']
         self.dfs[stock_name][pred_cols][-(self.N_TEST * 3):].plot(figsize=(15, 5))
