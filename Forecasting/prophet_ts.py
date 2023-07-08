@@ -4,7 +4,6 @@ import yfinance as yf
 import matplotlib.pyplot as plt
 from prophet import Prophet
 from prophet.diagnostics import cross_validation, performance_metrics
-from prophet.plot import plot_plotly, plot_components_plotly
 from prophet.plot import plot_cross_validation_metric
 from prophet.plot import add_changepoints_to_plot
 
@@ -14,15 +13,9 @@ class StocksForecastProphet:
                  stock_name_list=('UAL', 'WMT', 'PFE'),
                  start_date='2018-01-01',
                  end_date='2022-12-31',
+                 n_test=12,
                  ):
-        """
-        Initialize the StocksForecast class.
-
-        Args:
-            stock_name_list (list[str]): List of stock names. Default is ('UAL', 'WMT', 'PFE').
-            start_date (str): Start date of the data. Default is '2018-01-01'.
-            end_date (str): End date of the data. Default is '2022-12-31'.
-        """
+        self.N_TEST = n_test
         self.dfs = dict()
         for name in stock_name_list:
             self.dfs[name] = yf.download(name, start=start_date, end=end_date)
@@ -39,44 +32,35 @@ class StocksForecastProphet:
                     diff: bool = True,
                     ):
 
-        df = self.dfs[stock_name]
-        df['y'] = df[col]
-        print(df.head())
+        df0 = self.dfs[stock_name]
+        df0['y'] = df0[col]
+        df = df0[:-self.N_TEST].copy()
 
         m = Prophet(yearly_seasonality=True,
                     weekly_seasonality=True)
         m.fit(df)
 
-        # Predict one year ahead
-        future = m.make_future_dataframe(periods=365)
-        future.tail()
+        # construct a df for prediction
+        future = m.make_future_dataframe(periods=self.N_TEST)
 
+        # forecast does not contain the original y values
         forecast = m.predict(future)
-
-        forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']].tail()
 
         fig1 = m.plot(forecast, figsize=(28, 8))
 
         fig2 = m.plot_components(forecast)
 
-        # A different way of plotting
-
-        plot_plotly(m, forecast)
-        plot_components_plotly(m, forecast)
-
+        # df_cv has the original y values
         df_cv = cross_validation(
             m,
             initial='730 days',
             period='30 days',
-            horizon='30 days'
+            horizon='30 days',
+            disable_tqdm=True,
         )
-
-        print(df_cv)
 
         pm = performance_metrics(df_cv)
         print(pm)
-
-        plot_cross_validation_metric(df_cv, metric='rmse')
 
         plot_cross_validation_metric(df_cv, metric='mape')
 
