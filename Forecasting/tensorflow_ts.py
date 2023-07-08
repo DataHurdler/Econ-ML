@@ -62,7 +62,8 @@ class StocksForecastDL:
                  end_date='2022-12-31',
                  t=10,
                  n_test=12,
-                 epochs=200, ):
+                 epochs=200,
+                 ):
         """
         Initialize the StocksForecast class.
 
