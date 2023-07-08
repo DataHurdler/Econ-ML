@@ -171,12 +171,21 @@ class StocksForecastDL:
 
         return Xtrain, Ytrain, Xtest, Ytest, train_idx, test_idx, N, d
 
-    def make_predictions(self, df, orig_col, train_idx, test_idx, Xtrain, Xtest, model, ann=False, multistep=False):
+    def make_predictions(self,
+                         stock_name,
+                         orig_col,
+                         train_idx,
+                         test_idx,
+                         Xtrain,
+                         Xtest,
+                         model,
+                         ann=False,
+                         multistep=False):
         """
         Make predictions using the trained model.
 
         Args:
-            df (DataFrame): Input data.
+            stock_name (str): Name of the stock.
             orig_col (list): Original columns used for predictions.
             train_idx (bool): Index of training samples.
             test_idx (bool): Index of test samples.
@@ -186,7 +195,7 @@ class StocksForecastDL:
             ann (bool): Indicates whether ANN model is used.
             multistep (bool): Indicates whether multistep prediction is performed.
         """
-        train = df.iloc[:-self.N_TEST]
+        train = self.dfs[stock_name].iloc[:-self.N_TEST]
         train_idx[:self.T + 1] = False
 
         if multistep:
@@ -197,19 +206,19 @@ class StocksForecastDL:
             Ptest = model.predict(Xtest).flatten()
 
         for c in orig_col:
-            df[f'Shift{c}'] = df[c].shift(1)
+            self.dfs[stock_name][f'Shift{c}'] = self.dfs[stock_name][c].shift(1)
 
         new_col = ["Shift" + word for word in orig_col]
-        prev = df[new_col]
+        prev = self.dfs[stock_name][new_col]
 
         last_train = train.iloc[-1][orig_col]
 
         if not multistep:
-            df.loc[train_idx, '1step_train'] = prev[train_idx].squeeze() + Ptrain
-            df.loc[test_idx, '1step_test'] = prev[test_idx].squeeze() + Ptest
+            self.dfs[stock_name].loc[train_idx, '1step_train'] = prev[train_idx].squeeze() + Ptrain
+            self.dfs[stock_name].loc[test_idx, '1step_test'] = prev[test_idx].squeeze() + Ptest
 
             col2 = ['1step_train', '1step_test']
-            df[col2].plot(figsize=(15, 5))
+            self.dfs[stock_name][col2].plot(figsize=(15, 5))
             plt.show()
 
             multistep_predictions = []
@@ -225,16 +234,21 @@ class StocksForecastDL:
                 last_x = np.roll(last_x, -1)
                 last_x[-1] = p[0]
 
-            df.loc[test_idx, 'multistep'] = last_train[0] + np.cumsum(multistep_predictions)
+            self.dfs[stock_name].loc[test_idx, 'multistep'] = last_train[0] + np.cumsum(multistep_predictions)
 
             col3 = ['multistep', '1step_test']
-            df[col3].plot(figsize=(15, 5))
+            self.dfs[stock_name][col3].plot(figsize=(15, 5))
             plt.show()
 
         else:
-            df.loc[test_idx, 'multioutput'] = last_train[0] + np.cumsum(Ptest)
+            self.dfs[stock_name].loc[test_idx, 'multioutput'] = last_train[0] + np.cumsum(Ptest)
 
-    def run_forecast(self, stock_name: str = 'UAL', col: list = ['Log'], diff=True, model="cnn", multistep=False, **kwargs):
+    def run_forecast(self,
+                     stock_name: str = 'UAL',
+                     col: list = ['Log'],
+                     diff=True,
+                     model="cnn",
+                     multistep=False, **kwargs):
         """
         Run the forecast for a given stock.
 
@@ -246,7 +260,7 @@ class StocksForecastDL:
             multistep (bool): Indicates whether multistep prediction is performed.
             **kwargs: Additional keyword arguments for the selected model.
         """
-        df_all = self.dfs[stock_name]
+        # df_all = self.dfs[stock_name]
 
         D = len(col)
         if D > 1 and model == "ann":
@@ -256,7 +270,7 @@ class StocksForecastDL:
         new_col = col.copy()
         if diff:
             for c in col:
-                df_all[f'Diff{c}'] = df_all[c].diff()
+                self.dfs[stock_name][f'Diff{c}'] = self.dfs[stock_name][c].diff()
             new_col = ["Diff" + word for word in new_col]
 
         if model == 'ann':
@@ -264,7 +278,7 @@ class StocksForecastDL:
         else:
             ann_bool = False
 
-        output = self.prepare_data(df=df_all, col=new_col, ann=ann_bool, multistep=multistep)
+        output = self.prepare_data(df=self.dfs[stock_name], col=new_col, ann=ann_bool, multistep=multistep)
         Xtrain, Ytrain, Xtest, Ytest, train_idx, test_idx, N, D = output
 
         self.train_idx = train_idx
@@ -304,7 +318,7 @@ class StocksForecastDL:
         plt.legend()
         plt.show()
 
-        self.make_predictions(df_all, col, train_idx, test_idx, Xtrain, Xtest, model, ann_bool, multistep)
+        self.make_predictions(stock_name, col, train_idx, test_idx, Xtrain, Xtest, model, ann_bool, multistep)
 
     def single_model_comparison(self, stock_name: str = 'UAL', col: list = ['Log'], diff=True, model="cnn", **kwargs):
         """
@@ -320,22 +334,22 @@ class StocksForecastDL:
         Returns:
             DataFrame: DataFrame containing the predictions and evaluation metrics.
         """
-        df_all = self.dfs[stock_name]
+        # df_all = self.dfs[stock_name]
 
         self.run_forecast(model=model, diff=diff, **kwargs)
         self.run_forecast(model=model, diff=diff, multistep=True, **kwargs)
 
         pred_cols = col + ['multistep', '1step_test', 'multioutput']
-        df_all[pred_cols][-(self.N_TEST * 3):].plot(figsize=(15, 5))
+        self.dfs[stock_name][pred_cols][-(self.N_TEST * 3):].plot(figsize=(15, 5))
         plt.show()
 
-        test_log_pass = df_all.iloc[-self.N_TEST:][col]
-        mape1 = mean_absolute_percentage_error(test_log_pass, df_all.loc[self.test_idx, 'multistep'])
+        test_log_pass = self.dfs[stock_name].iloc[-self.N_TEST:][col]
+        mape1 = mean_absolute_percentage_error(test_log_pass, self.dfs[stock_name].loc[self.test_idx, 'multistep'])
         print("multi-step MAPE:", mape1)
-        mape2 = mean_absolute_percentage_error(test_log_pass, df_all.loc[self.test_idx, 'multioutput'])
+        mape2 = mean_absolute_percentage_error(test_log_pass, self.dfs[stock_name].loc[self.test_idx, 'multioutput'])
         print("multi-output MAPE:", mape2)
 
-        return df_all
+        # return self.dfs[stock_name]
 
 
 if __name__ == "__main__":

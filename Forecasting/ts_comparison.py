@@ -11,6 +11,7 @@
 # ts_tensorflow and ts_prophet both accept a list of stocks and N_TEST
 # Need to loop over the list of stocks for the actual `run` methods
 
+import matplotlib.pyplot as plt
 from ts_tensorflow import StocksForecastDL
 from ts_prophet import StocksForecastProphet
 
@@ -20,8 +21,10 @@ def run_comparison():
 
 
 if __name__ == "__main__":
-    stock_list = ['AAPL', 'UAL', 'WMT', 'PFE', 'MA', 'MCD', 'OXY', 'BA', 'GE', 'GM']
-    N_TEST_list = [5, 10, 20, 50, 100, 200]
+    plt.ion()
+
+    stock_list = ('AAPL', 'UAL', 'WMT', 'PFE', 'MA', 'MCD', 'OXY', 'BA', 'GE', 'GM')
+    N_TEST_list = (5, 10, 20, 50, 100, 200)
 
     dl = StocksForecastDL(stock_name_list=stock_list)
     p = StocksForecastProphet(stock_name_list=stock_list)
