@@ -72,3 +72,5 @@ if __name__ == "__main__":
 
     ts = StocksForecastProphet()
     ts.run_prophet()
+
+# https://www.google.com/search?client=firefox-b-1-d&q=mac+how+to+open+usr%2Flocal+in+finder
