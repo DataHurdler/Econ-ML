@@ -296,7 +296,7 @@ if __name__ == "__main__":
 
     # plt.ion()
 
-    ts = StocksForecastDL(epochs=5000)
+    ts = StocksForecastDL(t=20, epochs=1000)
     # ANN only works with single col for now
     # ts.run_forecast(model="ann")
     # ts.run_forecast(model="cnn")
