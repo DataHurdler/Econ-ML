@@ -343,11 +343,11 @@ class StocksForecastDL:
         self.dfs[stock_name][pred_cols][-(self.N_TEST * 3):].plot(figsize=(15, 5))
         plt.show()
 
-        test_log_pass = self.dfs[stock_name].iloc[-self.N_TEST:][col]
-        mape1 = mean_absolute_percentage_error(test_log_pass, self.dfs[stock_name].loc[self.test_idx, 'multistep'])
-        print("multi-step MAPE:", mape1)
-        mape2 = mean_absolute_percentage_error(test_log_pass, self.dfs[stock_name].loc[self.test_idx, 'multioutput'])
-        print("multi-output MAPE:", mape2)
+        # test_log_pass = self.dfs[stock_name].iloc[-self.N_TEST:][col]
+        # mape1 = mean_absolute_percentage_error(test_log_pass, self.dfs[stock_name].loc[self.test_idx, 'multistep'])
+        # print("multi-step MAPE:", mape1)
+        # mape2 = mean_absolute_percentage_error(test_log_pass, self.dfs[stock_name].loc[self.test_idx, 'multioutput'])
+        # print("multi-output MAPE:", mape2)
 
         # return self.dfs[stock_name]
 

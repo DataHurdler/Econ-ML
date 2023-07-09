@@ -11,7 +11,11 @@
 # ts_tensorflow and ts_prophet both accept a list of stocks and N_TEST
 # Need to loop over the list of stocks for the actual `run` methods
 
+import pandas as pd
 import matplotlib.pyplot as plt
+
+from sklearn.metrics import mean_absolute_percentage_error
+
 from ts_tensorflow import StocksForecastDL
 from ts_prophet import StocksForecastProphet
 
@@ -26,12 +30,23 @@ if __name__ == "__main__":
     stock_list = ('AAPL', 'UAL')
     # stock_list = ('AAPL', 'UAL', 'WMT', 'PFE', 'MA', 'MCD', 'OXY', 'BA', 'GE', 'GM')
     N_TEST_list = (5, 10, 20, 50, 100, 200)
+    DL_models = {
+        "ann": ('ann', None),
+        "cnn": ('cnn', None),
+        "lstm": ('rnn', 'lstm'),
+        "gru": ('rnn', 'gru'),
+    }
 
-    dl = StocksForecastDL(stock_name_list=stock_list)
-    p = StocksForecastProphet(stock_name_list=stock_list)
+    column_names = ['model', 'stock', 'n_test', 'mape']
+    results = pd.DataFrame()
 
-    for stock in stock_list:
-        # dl.single_model_comparison(stock_name=stock)
-        # print(dl.dfs[stock].tail())
-        p.run_prophet(stock_name=stock)
-        print(p.dfs[stock].tail())
+    for n in N_TEST_list:
+        dl = StocksForecastDL(stock_name_list=stock_list, n_test=n)
+        p = StocksForecastProphet(stock_name_list=stock_list, n_test=n)
+
+        for stock in stock_list:
+            p.run_prophet(stock_name=stock)
+            print(p.dfs[stock].tail())
+            for model in DL_models:
+                dl.single_model_comparison(stock_name=stock, model=model[0], rnn_model=model[1])
+                print(dl.dfs[stock].tail())
