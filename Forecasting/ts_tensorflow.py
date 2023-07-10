@@ -213,9 +213,9 @@ class StocksForecastDL:
             self.dfs[stock_name].loc[train_idx, '1step_train'] = prev[train_idx].squeeze() + Ptrain
             self.dfs[stock_name].loc[test_idx, '1step_test'] = prev[test_idx].squeeze() + Ptest
 
-            col2 = ['1step_train', '1step_test']
-            self.dfs[stock_name][col2].plot(figsize=(15, 5))
-            plt.show()
+            # col2 = ['1step_train', '1step_test']
+            # self.dfs[stock_name][col2].plot(figsize=(15, 5))
+            # plt.show()
 
             multistep_predictions = []
             last_x = Xtest[0]
@@ -232,9 +232,9 @@ class StocksForecastDL:
 
             self.dfs[stock_name].loc[test_idx, 'multistep'] = last_train[0] + np.cumsum(multistep_predictions)
 
-            col3 = ['multistep', '1step_test']
-            self.dfs[stock_name][col3].plot(figsize=(15, 5))
-            plt.show()
+            # col3 = ['multistep', '1step_test']
+            # self.dfs[stock_name][col3].plot(figsize=(15, 5))
+            # plt.show()
 
         else:
             self.dfs[stock_name].loc[test_idx, 'multioutput'] = last_train[0] + np.cumsum(Ptest)
@@ -290,17 +290,17 @@ class StocksForecastDL:
         else:
             x = Dense(1)(x)
 
-        model = Model(i, x)
+        nn_model = Model(i, x)
 
-        model.summary()
+        nn_model.summary()
 
-        model.compile(
+        nn_model.compile(
             loss='mse',
             optimizer='adam',
             metrics='mae',
         )
 
-        r = model.fit(
+        r = nn_model.fit(
             Xtrain,
             Ytrain,
             epochs=self.EPOCHS,
@@ -311,9 +311,19 @@ class StocksForecastDL:
         plt.plot(r.history['loss'], label='train loss')
         plt.plot(r.history['val_loss'], label='test loss')
         plt.legend()
-        plt.show()
 
-        self.make_predictions(stock_name, col, train_idx, test_idx, Xtrain, Xtest, model, ann_bool, multistep)
+        if multistep:
+            step_type = "multi"
+        else:
+            step_type = "single"
+        if model == "rnn":
+            rnn_model = kwargs.get("rnn_model")
+            plt.savefig(f"{model}_{rnn_model}_{step_type}_hist.png", dpi=300)
+        else:
+            plt.savefig(f"{model}_{step_type}_hist.png", dpi=300)
+        plt.clf()
+
+        self.make_predictions(stock_name, col, train_idx, test_idx, Xtrain, Xtest, nn_model, ann_bool, multistep)
 
     def single_model_comparison(self, stock_name: str = 'UAL', col: list = ['Log'], diff=True, model="cnn", **kwargs):
         """
@@ -335,7 +345,13 @@ class StocksForecastDL:
 
         pred_cols = col + ['1step_test', 'multistep', 'multioutput']
         self.dfs[stock_name][pred_cols][-(self.N_TEST * 3):].plot(figsize=(15, 5))
-        plt.show()
+
+        if model == "rnn":
+            rnn_model = kwargs.get("rnn_model")
+            plt.savefig(f"{model}_{rnn_model}_comparison.png", dpi=300)
+        else:
+            plt.savefig(f"{model}_comparison.png", dpi=300)
+        plt.clf()
 
 
 if __name__ == "__main__":
@@ -344,7 +360,7 @@ if __name__ == "__main__":
 
     plt.ion()
 
-    ts = StocksForecastDL(t=20, epochs=100)
+    ts = StocksForecastDL(t=20, epochs=1500)
 
     ts.single_model_comparison(model="ann", diff=True)
     ts.single_model_comparison(model="cnn", diff=True)
