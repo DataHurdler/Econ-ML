@@ -305,7 +305,7 @@ class StocksForecast:
         self.result_for_plot[-27:].plot(figsize=(15, 5),
                                         color=colors, style=line_styles, legend=True)
         plt.legend(labels=legend_names)
-        plt.savefig("comparison.png", dpi=300)
+        plt.savefig("comparison_ts.png", dpi=300)
 
 
 if __name__ == "__main__":
