@@ -187,9 +187,14 @@ class StocksForecast:
 
         stock_cols = df_all.columns.values
 
+        scaler_list = list()
+        scaler_idx = 0
         # standardizing different stocks
         for value in stock_cols:
             scaler = StandardScaler()
+            scaler_list.append(scaler)
+            scaler_idx += 1
+
             train[f'Scaled_{value}'] = scaler.fit_transform(train[[value]])
             test[f'Scaled_{value}'] = scaler.transform(test[[value]])
             df_all.loc[train_idx, f'Scaled_{value}'] = train[f'Scaled_{value}']
@@ -197,7 +202,7 @@ class StocksForecast:
 
         cols = ['Scaled_' + value for value in stock_cols]
 
-        return df_all, train, test, train_idx, test_idx, stock_cols, cols, scaler
+        return df_all, train, test, train_idx, test_idx, stock_cols, cols, scaler_list
 
     def run_var(self, stock_list=('UAL', 'WMT', 'PFE'), col='Close'):
         """
@@ -210,7 +215,7 @@ class StocksForecast:
 
         name = 'var'
         output = self.prepare_data_var(stock_list, col)
-        df_all, train, test, train_idx, test_idx, stock_cols, cols, scaler = output
+        df_all, train, test, train_idx, test_idx, stock_cols, cols, scaler_list = output
 
         model = VAR(train[cols])
         result = model.fit(maxlags=40, method='mle', ic='aic')
@@ -221,6 +226,8 @@ class StocksForecast:
 
         train_idx[:lag_order] = False
 
+        # index "0" for the first stock (UAL). Can modify to be more generic
+        scaler = scaler_list[0]
         fitted_scaled = result.fittedvalues[cols[0]]
         fitted = scaler.inverse_transform(np.reshape(fitted_scaled, (-1, 1)))
         forecast_scaled = forecast_df[cols[0]].values
