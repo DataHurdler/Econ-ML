@@ -34,7 +34,6 @@ if __name__ == "__main__":
             p = StocksForecastProphet(stock_name_list=stock_list, n_test=n)
 
             p.run_prophet(col=col, stock_name=stock)
-            # print(p.dfs[stock].tail())
             mape = mean_absolute_percentage_error(p.dfs[stock]['yhat'][-n:], p.dfs[stock]['y'][-n:])
             new_row = ['prophet', stock, n, mape]
             results.loc[len(results)] = new_row

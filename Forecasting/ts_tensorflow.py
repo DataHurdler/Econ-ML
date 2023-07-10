@@ -213,10 +213,6 @@ class StocksForecastDL:
             self.dfs[stock_name].loc[train_idx, '1step_train'] = prev[train_idx].squeeze() + Ptrain
             self.dfs[stock_name].loc[test_idx, '1step_test'] = prev[test_idx].squeeze() + Ptest
 
-            # col2 = ['1step_train', '1step_test']
-            # self.dfs[stock_name][col2].plot(figsize=(15, 5))
-            # plt.show()
-
             multistep_predictions = []
             last_x = Xtest[0]
 
@@ -231,10 +227,6 @@ class StocksForecastDL:
                 last_x[-1] = p[0]
 
             self.dfs[stock_name].loc[test_idx, 'multistep'] = last_train[0] + np.cumsum(multistep_predictions)
-
-            # col3 = ['multistep', '1step_test']
-            # self.dfs[stock_name][col3].plot(figsize=(15, 5))
-            # plt.show()
 
         else:
             self.dfs[stock_name].loc[test_idx, 'multioutput'] = last_train[0] + np.cumsum(Ptest)
