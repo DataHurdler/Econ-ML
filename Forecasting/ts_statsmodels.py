@@ -273,7 +273,9 @@ class StocksForecast:
         train, test, train_idx, test_idx = prepare_data(df_all)
 
         plot_acf(train[col])
+        plt.savefig("acf.png", dpi=300)
         plot_pacf(train[col])
+        plt.savefig("pacf.png", dpi=300)
 
         model = pm.auto_arima(train[col], trace=True, suppress_warnings=True, seasonal=seasonal, m=m)
 
