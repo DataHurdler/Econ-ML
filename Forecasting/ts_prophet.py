@@ -22,7 +22,7 @@ class StocksForecastProphet:
             stock_name_list (tuple): List of stock names.
             start_date (str): Start date for data retrieval.
             end_date (str): End date for data retrieval.
-            n_test (int): Number of test samples.
+            n_test (int): Length of forecast horizon.
         """
         self.N_TEST = n_test
         self.dfs = dict()
@@ -38,6 +38,7 @@ class StocksForecastProphet:
         stock_name: str = 'UAL',
         col: str = 'Log',
         cv: bool = False,
+        plot: bool = True,
     ):
         """
         Run the Prophet forecasting model for a given stock.
@@ -46,6 +47,7 @@ class StocksForecastProphet:
             stock_name (str): Name of the stock.
             col (str): Column to be used for forecasting.
             cv (bool): Whether to conduct cross validation. Default is False.
+            plot (bool): Whether to plot. Default is True.
         """
         df0 = self.dfs[stock_name]
         df0['y'] = df0[col]
@@ -73,16 +75,18 @@ class StocksForecastProphet:
             plot_cross_validation_metric(df_cv, metric='mape')
             plt.savefig("prophet_cv_mape.png", dpi=300)
 
-        fig = m.plot(forecast, figsize=(28, 8))
-        add_changepoints_to_plot(fig.gca(), m, forecast)
-        plt.savefig("prophet_with_changepoints.png", dpi=300)
+        if plot:
+            fig = m.plot(forecast, figsize=(28, 8))
+            add_changepoints_to_plot(fig.gca(), m, forecast)
+            plt.savefig("prophet_with_changepoints.png", dpi=300)
 
-        m.plot_components(forecast)
-        plt.savefig("prophet_components", dpi=300)
+            m.plot_components(forecast)
+            plt.savefig("prophet_components", dpi=300)
 
 
 if __name__ == "__main__":
     ts = StocksForecastProphet()
     ts.run_prophet(cv=True)
 
+# Making Prophet to work with Python 3.9 in MacBook:
 # https://www.google.com/search?client=firefox-b-1-d&q=mac+how+to+open+usr%2Flocal+in+finder

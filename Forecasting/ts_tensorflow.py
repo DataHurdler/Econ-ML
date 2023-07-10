@@ -3,6 +3,7 @@ import yfinance as yf
 import matplotlib.pyplot as plt
 import warnings
 import sys
+import random
 
 import tensorflow as tf
 from tensorflow.keras.layers import Dense, Input  # ANN
@@ -94,7 +95,7 @@ class StocksForecastDL:
             start_date (str): Start date for data retrieval.
             end_date (str): End date for data retrieval.
             t (int): Number of time steps.
-            n_test (int): Number of test samples.
+            n_test (int): length of forecast horizon.
             epochs (int): Number of training epochs.
         """
         self.T = t
@@ -236,7 +237,9 @@ class StocksForecastDL:
                      col: list = ['Log'],
                      diff=True,
                      model="cnn",
-                     multistep=False, **kwargs):
+                     multistep=False,
+                     plot=True,
+                     **kwargs):
         """
         Run the forecast for a given stock.
 
@@ -246,6 +249,7 @@ class StocksForecastDL:
             diff (bool): Indicates whether differencing is applied.
             model (str): Model type ('ann', 'rnn', or 'cnn').
             multistep (bool): Indicates whether multistep prediction is performed.
+            plot (bool): Whether to plot. Default is True.
             **kwargs: Additional keyword arguments for the selected model.
         """
 
@@ -300,24 +304,31 @@ class StocksForecastDL:
             verbose=0,
         )
 
-        plt.plot(r.history['loss'], label='train loss')
-        plt.plot(r.history['val_loss'], label='test loss')
-        plt.legend()
+        if plot:
+            plt.plot(r.history['loss'], label='train loss')
+            plt.plot(r.history['val_loss'], label='test loss')
+            plt.legend()
 
-        if multistep:
-            step_type = "multi"
-        else:
-            step_type = "single"
-        if model == "rnn":
-            rnn_model = kwargs.get("rnn_model")
-            plt.savefig(f"{model}_{rnn_model}_{step_type}_hist.png", dpi=300)
-        else:
-            plt.savefig(f"{model}_{step_type}_hist.png", dpi=300)
-        plt.clf()
+            if multistep:
+                step_type = "multi"
+            else:
+                step_type = "single"
+            if model == "rnn":
+                rnn_model = kwargs.get("rnn_model")
+                plt.savefig(f"{model}_{rnn_model}_{step_type}_hist.png", dpi=300)
+            else:
+                plt.savefig(f"{model}_{step_type}_hist.png", dpi=300)
+            plt.clf()
 
         self.make_predictions(stock_name, col, train_idx, test_idx, Xtrain, Xtest, nn_model, ann_bool, multistep)
 
-    def single_model_comparison(self, stock_name: str = 'UAL', col: list = ['Log'], diff=True, model="cnn", **kwargs):
+    def single_model_comparison(self,
+                                stock_name: str = 'UAL',
+                                col: list = ['Log'],
+                                diff=True,
+                                model="cnn",
+                                plot=True,
+                                **kwargs):
         """
         Perform a comparison of a single model for a given stock.
 
@@ -326,28 +337,32 @@ class StocksForecastDL:
             col (list): List of columns to be used.
             diff (bool): Indicates whether differencing is applied.
             model (str): Model type ('ann', 'rnn', or 'cnn').
+            plot (bool): Whether to plot. Default is True.
             **kwargs: Additional keyword arguments for the selected model.
 
         Returns:
             DataFrame: DataFrame containing the predictions and evaluation metrics.
         """
 
-        self.run_forecast(model=model, stock_name=stock_name, diff=diff, **kwargs)
-        self.run_forecast(model=model, stock_name=stock_name, diff=diff, multistep=True, **kwargs)
+        self.run_forecast(model=model, stock_name=stock_name, diff=diff, plot=plot, **kwargs)
+        self.run_forecast(model=model, stock_name=stock_name, diff=diff, multistep=True, plot=plot, **kwargs)
 
-        pred_cols = col + ['1step_test', 'multistep', 'multioutput']
-        self.dfs[stock_name][pred_cols][-(self.N_TEST * 3):].plot(figsize=(15, 5))
+        if plot:
+            pred_cols = col + ['1step_test', 'multistep', 'multioutput']
+            self.dfs[stock_name][pred_cols][-(self.N_TEST * 3):].plot(figsize=(15, 5))
 
-        if model == "rnn":
-            rnn_model = kwargs.get("rnn_model")
-            plt.savefig(f"{model}_{rnn_model}_comparison.png", dpi=300)
-        else:
-            plt.savefig(f"{model}_comparison.png", dpi=300)
-        plt.clf()
+            if model == "rnn":
+                rnn_model = kwargs.get("rnn_model")
+                plt.savefig(f"{model}_{rnn_model}_comparison.png", dpi=300)
+            else:
+                plt.savefig(f"{model}_comparison.png", dpi=300)
+            plt.clf()
 
 
 if __name__ == "__main__":
+    # make sure to get reproducible results
     np.random.seed(42)
+    random.seed(42)
     tf.random.set_seed(42)
 
     plt.ion()
