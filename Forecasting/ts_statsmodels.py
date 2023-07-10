@@ -34,23 +34,24 @@ def prepare_data(df):
     return train, test, train_idx, test_idx
 
 
-def plot_fitted_forecast(df, col=None):
+def plot_fitted_forecast(df, name, col=None):
     """
     Plot the fitted and forecasted values of a time series.
 
     Args:
         df (pandas.DataFrame): The input dataframe.
+        name (str): Name of model that is being plotted.
         col (str): The column name to plot. Default is None.
     """
-    df = df[-108:]  # only plot the last 108 days
+    df = df[-54:]  # only plot the last 54 days
 
     fig, ax = plt.subplots(figsize=(15, 5))
     ax.plot(df.index, df[f"{col}"], label='data')
-    ax.plot(df.index, df['fitted'], label='fitted')
-    ax.plot(df.index, df['forecast'], label='forecast')
+    ax.plot(df.index, df[f"{name}_fitted"], label='fitted')
+    ax.plot(df.index, df[f"{name}_forecast"], label='forecast')
 
     plt.legend()
-    plt.show()
+    plt.savefig(f"statsmodels_{name}.png", dpi=300)
 
 
 class StocksForecast:
@@ -77,16 +78,18 @@ class StocksForecast:
             stock_name (str): The name of the stock. Default is 'UAL'.
             col (str): The column name to use for the model. Default is 'Close'.
         """
+        name = 'ets'
+
         df_all = self.dfs[stock_name]
         train, test, train_idx, test_idx = prepare_data(df_all)
 
         model = ExponentialSmoothing(train[col].dropna(), trend='mul', seasonal='mul', seasonal_periods=252)
         result = model.fit()
 
-        df_all.loc[train_idx, 'fitted'] = result.fittedvalues
-        df_all.loc[test_idx, 'forecast'] = np.array(result.forecast(N_TEST))
+        df_all.loc[train_idx, f"{name}_fitted"] = result.fittedvalues
+        df_all.loc[test_idx, f"{name}_forecast"] = np.array(result.forecast(N_TEST))
 
-        plot_fitted_forecast(df_all, col)
+        plot_fitted_forecast(df_all, 'ets', col)
 
     def walkforward_ets(self, h, steps, tuple_of_option_lists, stock_name='UAL', col='Close', debug=False):
         """
@@ -194,7 +197,7 @@ class StocksForecast:
 
         cols = ['Scaled_' + value for value in stock_cols]
 
-        return df_all, train, test, train_idx, test_idx, stock_cols, cols
+        return df_all, train, test, train_idx, test_idx, stock_cols, cols, scaler
 
     def run_var(self, stock_list=('UAL', 'WMT', 'PFE'), col='Close'):
         """
@@ -205,7 +208,9 @@ class StocksForecast:
             col (str): The column name to use for the model. Default is 'Close'.
         """
 
-        df_all, train, test, train_idx, test_idx, stock_cols, cols = self.prepare_data_var(stock_list, col)
+        name = 'var'
+        output = self.prepare_data_var(stock_list, col)
+        df_all, train, test, train_idx, test_idx, stock_cols, cols, scaler = output
 
         model = VAR(train[cols])
         result = model.fit(maxlags=40, method='mle', ic='aic')
@@ -214,17 +219,24 @@ class StocksForecast:
         prior = train.iloc[-lag_order:][cols].to_numpy()
         forecast_df = pd.DataFrame(result.forecast(prior, N_TEST), columns=cols)
 
-        df_all.loc[train_idx, 'fitted'] = result.fittedvalues[cols[0]]
-        df_all.loc[test_idx, 'forecast'] = forecast_df[cols[0]].values
+        train_idx[:lag_order] = False
 
-        col = "Scaled_" + stock_cols[0]
-        plot_fitted_forecast(df_all, col)
+        fitted_scaled = result.fittedvalues[cols[0]]
+        fitted = scaler.inverse_transform(np.reshape(fitted_scaled, (-1, 1)))
+        forecast_scaled = forecast_df[cols[0]].values
+        forecast = scaler.inverse_transform(np.reshape(forecast_scaled, (-1, 1)))
+
+        df_all.loc[train_idx, f"{name}_fitted"] = fitted
+        df_all.loc[test_idx, f"{name}_forecast"] = forecast
+
+        col = stock_cols[0]
+        plot_fitted_forecast(df_all, 'var', col)
 
         # Calculate R2
         print("VAR Train R2: ", r2_score(df_all.loc[train_idx, cols[0]].iloc[lag_order:],
-                                         df_all.loc[train_idx, 'fitted'].iloc[lag_order:]))
+                                         df_all.loc[train_idx, f"{name}_fitted"].iloc[lag_order:]))
         print("VAR Test R2: ", r2_score(df_all.loc[test_idx, cols[0]],
-                                        df_all.loc[test_idx, 'forecast']))
+                                        df_all.loc[test_idx, f"{name}_forecast"]))
 
     def run_arima(self, stock_name='UAL', col='Close', seasonal=True, m=12):
         """
@@ -236,6 +248,7 @@ class StocksForecast:
             seasonal (bool): Whether to include seasonal components. Default is True.
             m (int): The number of periods in each seasonal cycle. Default is 12.
         """
+        name = 'arima'
         df_all = self.dfs[stock_name]
         train, test, train_idx, test_idx = prepare_data(df_all)
 
@@ -246,10 +259,10 @@ class StocksForecast:
 
         print(model.summary())
 
-        df_all.loc[train_idx, 'fitted'] = model.predict_in_sample(end=-1)
-        df_all.loc[test_idx, 'forecast'] = np.array(model.predict(n_periods=N_TEST, return_conf_int=False))
+        df_all.loc[train_idx, f"{name}_fitted"] = model.predict_in_sample(end=-1)
+        df_all.loc[test_idx, f"{name}_forecast"] = np.array(model.predict(n_periods=N_TEST, return_conf_int=False))
 
-        plot_fitted_forecast(df_all, col)
+        plot_fitted_forecast(df_all, 'arima', col)
 
 
 if __name__ == "__main__":
