@@ -48,7 +48,7 @@ if __name__ == "__main__":
                     dl.single_model_comparison(col=[col],
                                                stock_name=stock,
                                                model=DL_models[model][0])
-                # print(dl.dfs[stock].tail())
+
                 mape1 = mean_absolute_percentage_error(dl.dfs[stock]['multistep'][-n:], dl.dfs[stock][col][-n:])
                 mape2 = mean_absolute_percentage_error(dl.dfs[stock]['multioutput'][-n:], dl.dfs[stock][col][-n:])
                 new_row1 = [f"{model}_single", stock, n, mape1]
@@ -61,11 +61,11 @@ if __name__ == "__main__":
 
     df = pd.read_csv("results.csv")
 
-    # Calculate the average value for each model and type
+    # Calculate the average mape for each model and type
     averages = df.groupby(['model', 'n_test'])['mape'].mean().reset_index()
 
-    fig, ax = plt.subplots(figsize=(15, 5))
     # Create a line plot for each model
+    fig, ax = plt.subplots(figsize=(15, 5))
     models = averages['model'].unique()
     for model in models:
         # Determine the line style based on the model name
