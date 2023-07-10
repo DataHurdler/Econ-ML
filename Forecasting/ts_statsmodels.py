@@ -13,6 +13,7 @@ from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.preprocessing import StandardScaler
 
 import warnings
+
 warnings.filterwarnings("ignore")  # ignore warnings
 
 
@@ -70,6 +71,8 @@ class StocksForecast:
             self.dfs[name]['Diff'] = self.dfs[name]['Close'].diff(1)
             self.dfs[name]['Log'] = np.log(self.dfs[name]['Close'])
 
+        self.result_for_plot = pd.DataFrame(index=self.dfs[stock_name_list[0]].index)
+
     def run_ets(self, stock_name='UAL', col='Close'):
         """
         Run the Exponential Smoothing (ETS) model on the specified stock.
@@ -88,6 +91,10 @@ class StocksForecast:
 
         df_all.loc[train_idx, f"{name}_fitted"] = result.fittedvalues
         df_all.loc[test_idx, f"{name}_forecast"] = np.array(result.forecast(N_TEST))
+
+        self.result_for_plot = self.result_for_plot.merge(df_all[[f"{name}_fitted", f"{name}_forecast"]],
+                                                          left_index=True,
+                                                          right_index=True)
 
         plot_fitted_forecast(df_all, 'ets', col)
 
@@ -187,8 +194,10 @@ class StocksForecast:
 
         stock_cols = df_all.columns.values
 
+        # save all scalers into a list for inverse_transform fitted values and forecast
         scaler_list = list()
         scaler_idx = 0
+
         # standardizing different stocks
         for value in stock_cols:
             scaler = StandardScaler()
@@ -236,6 +245,10 @@ class StocksForecast:
         df_all.loc[train_idx, f"{name}_fitted"] = fitted
         df_all.loc[test_idx, f"{name}_forecast"] = forecast
 
+        self.result_for_plot = self.result_for_plot.merge(df_all[[f"{name}_fitted", f"{name}_forecast"]],
+                                                          left_index=True,
+                                                          right_index=True)
+
         col = stock_cols[0]
         plot_fitted_forecast(df_all, 'var', col)
 
@@ -269,11 +282,31 @@ class StocksForecast:
         df_all.loc[train_idx, f"{name}_fitted"] = model.predict_in_sample(end=-1)
         df_all.loc[test_idx, f"{name}_forecast"] = np.array(model.predict(n_periods=N_TEST, return_conf_int=False))
 
+        self.result_for_plot = self.result_for_plot.merge(df_all[[f"{name}_fitted", f"{name}_forecast"]],
+                                                          left_index=True,
+                                                          right_index=True)
+
         plot_fitted_forecast(df_all, 'arima', col)
+
+    def plot_result_comparison(self, stock_name='UAL', col='Log'):
+        self.result_for_plot = self.result_for_plot.merge(self.dfs[stock_name][col],
+                                                          left_index=True,
+                                                          right_index=True)
+
+        colors = ['red', 'red', 'blue', 'blue', 'orange', 'orange', 'pink']
+        line_styles = [':', '--', ':', '--', ':', '--', '-']
+        legend_names = ['ETS Fitted Values', 'ETS Forecast',
+                        'VAR Fitted Values', 'VAR Forecast',
+                        'ARIMA Fitted Values', 'ARIMA Forecast',
+                        'Data (in log)']
+
+        self.result_for_plot[-27:].plot(figsize=(15, 5),
+                                        color=colors, style=line_styles, legend=True)
+        plt.legend(labels=legend_names)
+        plt.savefig("comparison.png", dpi=300)
 
 
 if __name__ == "__main__":
-
     # parameters
     STOCK = 'UAL'
     COL = 'Log'
@@ -292,6 +325,8 @@ if __name__ == "__main__":
     ts.run_ets(stock_name=STOCK, col=COL)
     ts.run_var(col=COL)
     ts.run_arima(stock_name=STOCK, col=COL)
+
+    ts.plot_result_comparison()
 
     tuple_of_option_lists = (trend_type_list, seasonal_type_list,)
     ts.run_walkforward(H, STEPS, STOCK, COL, tuple_of_option_lists)
