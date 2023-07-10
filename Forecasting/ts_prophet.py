@@ -1,4 +1,3 @@
-import pandas as pd
 import numpy as np
 import yfinance as yf
 import matplotlib.pyplot as plt
@@ -38,8 +37,7 @@ class StocksForecastProphet:
         self,
         stock_name: str = 'UAL',
         col: str = 'Log',
-        cv = False,
-        diff: bool = True,
+        cv: bool = False,
     ):
         """
         Run the Prophet forecasting model for a given stock.
@@ -47,7 +45,7 @@ class StocksForecastProphet:
         Args:
             stock_name (str): Name of the stock.
             col (str): Column to be used for forecasting.
-            diff (bool): Indicates whether differencing is applied.
+            cv (bool): Whether to conduct cross validation. Default is False.
         """
         df0 = self.dfs[stock_name]
         df0['y'] = df0[col]
@@ -73,14 +71,18 @@ class StocksForecastProphet:
             print(pm)
 
             plot_cross_validation_metric(df_cv, metric='mape')
+            plt.savefig("prophet_cv_mape.png", dpi=300)
 
         fig = m.plot(forecast, figsize=(28, 8))
-        a = add_changepoints_to_plot(fig.gca(), m, forecast)
-        fig2 = m.plot_components(forecast)
+        add_changepoints_to_plot(fig.gca(), m, forecast)
+        plt.savefig("prophet_with_changepoints.png", dpi=300)
+
+        m.plot_components(forecast)
+        plt.savefig("prophet_components", dpi=300)
 
 
 if __name__ == "__main__":
     ts = StocksForecastProphet()
-    ts.run_prophet()
+    ts.run_prophet(cv=True)
 
 # https://www.google.com/search?client=firefox-b-1-d&q=mac+how+to+open+usr%2Flocal+in+finder

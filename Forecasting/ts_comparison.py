@@ -1,16 +1,3 @@
-# plan
-# loop over 10 (or more) different stocks
-# create a graph where x is N_TEST and y is MAPE
-# Models included: ANN, CNN, GRU, LSTM, and Prophet
-
-# Prepare a list of stocks and the value of N_TEST
-# get data from `yfinance`
-# call ts_tensorflow to run ANN, CNN, GRU, and LSMT and return predictions
-# call ts_prophet to run Prophet and return predictions
-
-# ts_tensorflow and ts_prophet both accept a list of stocks and N_TEST
-# Need to loop over the list of stocks for the actual `run` methods
-
 import pandas as pd
 import matplotlib.pyplot as plt
 

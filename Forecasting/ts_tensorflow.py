@@ -1,4 +1,3 @@
-# import pandas as pd
 import numpy as np
 import yfinance as yf
 import matplotlib.pyplot as plt
@@ -10,9 +9,6 @@ from tensorflow.keras.layers import Dense, Input  # ANN
 from tensorflow.keras.layers import LSTM, GRU, SimpleRNN  # RNN
 from tensorflow.keras.layers import Conv1D, MaxPooling1D, GlobalMaxPooling1D  # CNN
 from tensorflow.keras.models import Model
-# from tensorflow.keras.callbacks import ModelCheckpoint
-
-from sklearn.metrics import mean_absolute_percentage_error
 
 
 def ann(T, num_layers=32):
@@ -260,7 +256,6 @@ class StocksForecastDL:
             multistep (bool): Indicates whether multistep prediction is performed.
             **kwargs: Additional keyword arguments for the selected model.
         """
-        # df_all = self.dfs[stock_name]
 
         D = len(col)
         if D > 1 and model == "ann":
@@ -334,7 +329,6 @@ class StocksForecastDL:
         Returns:
             DataFrame: DataFrame containing the predictions and evaluation metrics.
         """
-        # df_all = self.dfs[stock_name]
 
         self.run_forecast(model=model, stock_name=stock_name, diff=diff, **kwargs)
         self.run_forecast(model=model, stock_name=stock_name, diff=diff, multistep=True, **kwargs)
@@ -342,14 +336,6 @@ class StocksForecastDL:
         pred_cols = col + ['1step_test', 'multistep', 'multioutput']
         self.dfs[stock_name][pred_cols][-(self.N_TEST * 3):].plot(figsize=(15, 5))
         plt.show()
-
-        # test_log_pass = self.dfs[stock_name].iloc[-self.N_TEST:][col]
-        # mape1 = mean_absolute_percentage_error(test_log_pass, self.dfs[stock_name].loc[self.test_idx, 'multistep'])
-        # print("multi-step MAPE:", mape1)
-        # mape2 = mean_absolute_percentage_error(test_log_pass, self.dfs[stock_name].loc[self.test_idx, 'multioutput'])
-        # print("multi-output MAPE:", mape2)
-
-        # return self.dfs[stock_name]
 
 
 if __name__ == "__main__":
