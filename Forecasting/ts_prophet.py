@@ -88,5 +88,5 @@ if __name__ == "__main__":
     ts = StocksForecastProphet()
     ts.run_prophet(cv=True)
 
-# Making Prophet to work with Python 3.9 in MacBook:
+# Making Prophet to work with Python 3.9 in MacBook Pro:
 # https://www.google.com/search?client=firefox-b-1-d&q=mac+how+to+open+usr%2Flocal+in+finder
