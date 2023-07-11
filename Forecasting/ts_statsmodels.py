@@ -333,7 +333,6 @@ if __name__ == "__main__":
     tuple_of_option_lists = (trend_type_list, seasonal_type_list,)
     ts.run_walkforward(H, STEPS, STOCK, COL, tuple_of_option_lists)
 
-# TODO:BUILD THE WALK-FORWARD VALIDATION SO IT WORKS FOR ALL METHODS
 # Other things that may be of interest:
 # boxcox: from scipy.stats import boxcox
 # Test for stationarity: from statsmodels.tsa.stattools import adfuller
