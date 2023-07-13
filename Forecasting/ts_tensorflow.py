@@ -12,7 +12,7 @@ from tensorflow.keras.layers import Conv1D, MaxPooling1D, GlobalMaxPooling1D  # 
 from tensorflow.keras.models import Model
 
 
-def ann(T, num_layers=32):
+def ann(T, num_units=32):
     """
     Create a basic Artificial Neural Network (ANN) model.
 
@@ -24,13 +24,13 @@ def ann(T, num_layers=32):
         tuple: Input and output tensors of the ANN model.
     """
     i = Input(shape=(T,))
-    x = Dense(num_layers, activation='relu')(i)
-    x = Dense(num_layers, activation='relu')(x)
+    x = Dense(num_units, activation='relu')(i)
+    x = Dense(num_units, activation='relu')(x)
 
     return i, x
 
 
-def rnn(T, D, num_layers=32, rnn_model="lstm"):
+def rnn(T, D, num_units=32, rnn_model="lstm"):
     """
     Create a Recurrent Neural Network (RNN) model.
 
@@ -45,14 +45,14 @@ def rnn(T, D, num_layers=32, rnn_model="lstm"):
     """
     i = Input(shape=(T, D))
     if rnn_model == 'lstm':
-        x = LSTM(num_layers, return_sequences=True)(i)
-        x = LSTM(num_layers)(x)
+        x = LSTM(num_units, return_sequences=True)(i)
+        x = LSTM(num_units)(x)
     elif rnn_model == 'gru':
-        x = GRU(num_layers, return_sequences=True)(i)
-        x = GRU(num_layers)(x)
+        x = GRU(num_units, return_sequences=True)(i)
+        x = GRU(num_units)(x)
     else:
-        x = SimpleRNN(num_layers, return_sequences=True)(i)
-        x = SimpleRNN(num_layers)(x)
+        x = SimpleRNN(num_units, return_sequences=True)(i)
+        x = SimpleRNN(num_units)(x)
 
     return i, x
 
@@ -110,7 +110,7 @@ class StocksForecastDL:
         self.train_idx = []
         self.test_idx = []
 
-    def prepare_data(self, df, col, ann=False, multistep=False):
+    def prepare_data(self, df, col, ann=False, multioutput=False):
         """
         Prepare the data for training and testing.
 
@@ -118,7 +118,7 @@ class StocksForecastDL:
             df (DataFrame): Input data.
             col (list): List of columns to be used.
             ann (bool): Indicates whether ANN model is used.
-            multistep (bool): Indicates whether multistep prediction is performed.
+            multioutput (bool): Indicates whether multioutput prediction is performed.
 
         Returns:
             tuple: Prepared data for training and testing.
@@ -138,7 +138,7 @@ class StocksForecastDL:
         Y = []
 
         start_idx = self.N_TEST
-        if multistep:
+        if multioutput:
             for t in range(len(series) - self.T - self.N_TEST + 1):
                 x = series[t:t + self.T]
                 X.append(x)
@@ -177,7 +177,7 @@ class StocksForecastDL:
                          Xtest,
                          model,
                          ann=False,
-                         multistep=False):
+                         multioutput=False):
         """
         Make predictions using the trained model.
 
@@ -190,12 +190,12 @@ class StocksForecastDL:
             Xtest (ndarray): Test input data.
             model (Model): Trained model.
             ann (bool): Indicates whether ANN model is used.
-            multistep (bool): Indicates whether multistep prediction is performed.
+            multioutput (bool): Indicates whether multioutput prediction is performed.
         """
         train = self.dfs[stock_name].iloc[:-self.N_TEST]
         train_idx[:self.T + 1] = False
 
-        if multistep:
+        if multioutput:
             Ptrain = model.predict(Xtrain)[:, 0]
             Ptest = model.predict(Xtest)[0]
         else:
@@ -210,7 +210,7 @@ class StocksForecastDL:
 
         last_train = train.iloc[-1][orig_col]
 
-        if not multistep:
+        if not multioutput:
             self.dfs[stock_name].loc[train_idx, '1step_train'] = prev[train_idx].squeeze() + Ptrain
             self.dfs[stock_name].loc[test_idx, '1step_test'] = prev[test_idx].squeeze() + Ptest
 
@@ -237,7 +237,7 @@ class StocksForecastDL:
                      col: list = ['Log'],
                      diff=True,
                      model="cnn",
-                     multistep=False,
+                     multioutput=False,
                      plot=True,
                      **kwargs):
         """
@@ -248,7 +248,7 @@ class StocksForecastDL:
             col (list): List of columns to be used.
             diff (bool): Indicates whether differencing is applied.
             model (str): Model type ('ann', 'rnn', or 'cnn').
-            multistep (bool): Indicates whether multistep prediction is performed.
+            multioutput (bool): Indicates whether multioutput prediction is performed.
             plot (bool): Whether to plot. Default is True.
             **kwargs: Additional keyword arguments for the selected model.
         """
@@ -269,7 +269,7 @@ class StocksForecastDL:
         else:
             ann_bool = False
 
-        output = self.prepare_data(df=self.dfs[stock_name], col=new_col, ann=ann_bool, multistep=multistep)
+        output = self.prepare_data(df=self.dfs[stock_name], col=new_col, ann=ann_bool, multioutput=multioutput)
         Xtrain, Ytrain, Xtest, Ytest, train_idx, test_idx, N, D = output
 
         self.train_idx = train_idx
@@ -281,7 +281,7 @@ class StocksForecastDL:
         else:
             i, x = build_model(T=self.T, D=D, **kwargs)
 
-        if multistep:
+        if multioutput:
             x = Dense(self.N_TEST)(x)
         else:
             x = Dense(1)(x)
@@ -305,11 +305,12 @@ class StocksForecastDL:
         )
 
         if plot:
+            plt.figure(figsize=(15, 5))
             plt.plot(r.history['loss'], label='train loss')
             plt.plot(r.history['val_loss'], label='test loss')
             plt.legend()
 
-            if multistep:
+            if multioutput:
                 step_type = "multi"
             else:
                 step_type = "single"
@@ -320,7 +321,7 @@ class StocksForecastDL:
                 plt.savefig(f"{model}_{step_type}_hist.png", dpi=300)
             plt.clf()
 
-        self.make_predictions(stock_name, col, train_idx, test_idx, Xtrain, Xtest, nn_model, ann_bool, multistep)
+        self.make_predictions(stock_name, col, train_idx, test_idx, Xtrain, Xtest, nn_model, ann_bool, multioutput)
 
     def single_model_comparison(self,
                                 stock_name: str = 'UAL',
@@ -345,7 +346,7 @@ class StocksForecastDL:
         """
 
         self.run_forecast(model=model, stock_name=stock_name, diff=diff, plot=plot, **kwargs)
-        self.run_forecast(model=model, stock_name=stock_name, diff=diff, multistep=True, plot=plot, **kwargs)
+        self.run_forecast(model=model, stock_name=stock_name, diff=diff, multioutput=True, plot=plot, **kwargs)
 
         if plot:
             pred_cols = col + ['1step_test', 'multistep', 'multioutput']
