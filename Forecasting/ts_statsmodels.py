@@ -329,7 +329,7 @@ if __name__ == "__main__":
     seasonal_type_list = ['add', 'mul']
     init_method_list = ['estimated', 'heuristic', 'legacy-heristic']  # not used
     use_boxcox_list = [True, False, 0]  # not used
-    
+
     tuple_of_option_lists = (trend_type_list, seasonal_type_list,)
     ts.run_walkforward(H, STEPS, STOCK, COL, tuple_of_option_lists)
 
