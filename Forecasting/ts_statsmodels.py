@@ -316,12 +316,6 @@ if __name__ == "__main__":
     H = 20  # 4 weeks
     STEPS = 10
 
-    # Hyperparameters to try in ETS walk-forward validation
-    trend_type_list = ['add', 'mul']
-    seasonal_type_list = ['add', 'mul']
-    init_method_list = ['estimated', 'heuristic', 'legacy-heristic']  # not used
-    use_boxcox_list = [True, False, 0]  # not used
-
     ts = StocksForecast()
 
     ts.run_ets(stock_name=STOCK, col=COL)
@@ -330,6 +324,12 @@ if __name__ == "__main__":
 
     ts.plot_result_comparison()
 
+    # Hyperparameters to try in ETS walk-forward validation
+    trend_type_list = ['add', 'mul']
+    seasonal_type_list = ['add', 'mul']
+    init_method_list = ['estimated', 'heuristic', 'legacy-heristic']  # not used
+    use_boxcox_list = [True, False, 0]  # not used
+    
     tuple_of_option_lists = (trend_type_list, seasonal_type_list,)
     ts.run_walkforward(H, STEPS, STOCK, COL, tuple_of_option_lists)
 
